@@ -1,6 +1,5 @@
 package com.example.models
 
-import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import java.util.*
 
@@ -21,9 +20,10 @@ data class Task(
     val title: String,
     val description: String?,
     val status: TaskStatus,
-    val Severity: TaskSeverity,
-    val owner: User?
-
+    val severity: TaskSeverity,
+    val owner: String?
 ) {
-    val taskID: String = UUID.randomUUID().toString()
+    val taskId: String = UUID.randomUUID().toString()
+
+
 }

@@ -21,16 +21,15 @@ fun main() {
 
 fun Application.module() {
     val tasksRepository = TasksRepository()
-    //tasksRepository.tasks.add(Task ("sample task", null, TaskStatus.NOT_STARTED, TaskSeverity.LOW, null))
 
     routing {
         get("/tasks") {
-            call.respond(Json.encodeToString(tasksRepository.tasks))
+            call.respond(Json.encodeToString(tasksRepository.getAllTasks()))
         }
 
         get("/tasks/{id}"){
             val taskId = call.parameters["id"]
-            val task = tasksRepository.tasks.find { it.taskID == taskId }
+            val task = tasksRepository.getAllTasks(). find { it.taskId == taskId }
             if (task == null){
                 call.respondText("task with id $taskId not found", status = HttpStatusCode.NotFound)
             }
@@ -41,8 +40,8 @@ fun Application.module() {
 
         post ("/tasks") {
             val task = call.receive<Task>()
-            tasksRepository.add(task)
-            call.respondText("Task stored correctly with id ${task.taskID}", status = HttpStatusCode.Created)
+            tasksRepository.insertTask(task)
+            call.respondText("Task stored correctly with id ${task.taskId}", status = HttpStatusCode.Created)
         }
 
 
