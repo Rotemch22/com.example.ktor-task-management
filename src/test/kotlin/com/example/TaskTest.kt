@@ -1,10 +1,9 @@
-import com.example.Task
-import com.example.TaskStatus
-import com.example.TaskSeverity
-import com.example.User
+import com.example.models.Task
+import com.example.models.TaskStatus
+import com.example.models.TaskSeverity
+import com.example.models.User
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.time.LocalDateTime
 
 class TaskTest {
     @Test
@@ -17,7 +16,6 @@ class TaskTest {
         val task = Task(
             "Sample Task",
             "This is a sample task",
-            LocalDateTime.now(),
             TaskStatus.NOT_STARTED,
             TaskSeverity.LOW,
             user
@@ -41,15 +39,13 @@ class TaskTest {
         val task = Task(
             "Sample Task",
             "This is a sample task",
-            LocalDateTime.now(),
             TaskStatus.NOT_STARTED,
             TaskSeverity.LOW,
             user
         )
 
         // Test toString() representation
-        val expectedToString = "Task(title=Sample Task, description=This is a sample task, " +
-                "dueDate=${task.dueDate}, status=NOT_STARTED, Severity=LOW, owner=$user)"
+        val expectedToString = "Task(title=Sample Task, description=This is a sample task, status=NOT_STARTED, Severity=LOW, owner=$user)"
         assertEquals(expectedToString, task.toString())
     }
 }

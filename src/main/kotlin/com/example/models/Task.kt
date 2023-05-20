@@ -1,6 +1,8 @@
-package com.example
+package com.example.models
 
-import java.time.LocalDateTime
+import kotlinx.serialization.Contextual
+import kotlinx.serialization.Serializable
+import java.util.*
 
 enum class TaskStatus {
     NOT_STARTED,
@@ -14,12 +16,14 @@ enum class TaskSeverity {
     URGENT
 }
 
+@Serializable
 data class Task(
     val title: String,
     val description: String?,
-    val dueDate: LocalDateTime,
     val status: TaskStatus,
     val Severity: TaskSeverity,
     val owner: User?
+
 ) {
+    val taskID: String = UUID.randomUUID().toString()
 }
