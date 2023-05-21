@@ -4,9 +4,11 @@ import com.example.models.Task
 import com.example.models.TaskSeverity
 import com.example.models.TaskStatus
 import com.example.repository.TasksRepository
+import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.testing.*
 import kotlin.test.*
 import io.mockk.every
@@ -46,5 +48,78 @@ class ApplicationTest {
 
         assertEquals(HttpStatusCode.OK, response.status)
         assertEquals(listOf(task1, task2), responseTasks)
+    }
+
+
+
+    @Test
+    fun `test post task`() = testApplication {
+        application{
+            module(tasksRepository)
+        }
+
+        val client = createClient {
+            install(ContentNegotiation) { // Error on the `install` call
+                json()
+            }
+        }
+
+        every { tasksRepository.insertTask(task1) } returns 1
+        val response = client.post("/tasks"){
+            contentType(ContentType.Application.Json)
+            setBody(task1)
+        }
+
+        val responseTask: Task = Json.decodeFromString(Task.serializer(), response.bodyAsText())
+        assertEquals(HttpStatusCode.Created, response.status)
+        assertEquals(task1, responseTask)
+    }
+
+    @Test
+    fun `test post task missing body`() = testApplication {
+        application{
+            module(tasksRepository)
+        }
+
+        val client = createClient {
+            install(ContentNegotiation) { // Error on the `install` call
+                json()
+            }
+        }
+
+
+        val response = client.post("/tasks"){
+            contentType(ContentType.Application.Json)
+        }
+
+        assertEquals(HttpStatusCode.UnsupportedMediaType, response.status)
+    }
+
+    @Test
+    fun `test post task invalid body`() = testApplication {
+        application{
+            module(tasksRepository)
+        }
+
+        val client = createClient {
+            install(ContentNegotiation) { // Error on the `install` call
+                json()
+            }
+        }
+
+        every { tasksRepository.insertTask(task1) } returns 1
+
+        // send a request with an invalid task json (missing the severity field) and assert we get the correct error code in response
+        val response = client.post("/tasks"){
+            contentType(ContentType.Application.Json)
+            setBody("{\n" +
+                    "\"title\": \"sample task\",\n" +
+                    "\"description\": null,\n" +
+                    "\"status\": \"NOT_STARTED\",\n" +
+                    "\"owner\": null\n" +
+                    "}")
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
     }
 }
