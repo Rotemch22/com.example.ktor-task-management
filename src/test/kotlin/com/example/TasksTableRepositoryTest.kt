@@ -45,6 +45,33 @@ class TasksTableRepositoryTest {
 
     }
 
+    @Test
+    fun testUpdateTask(){
+        transaction (db) {
+            tasksRepository.insertTask(task1)
+            tasksRepository.insertTask(task2)
+        }
+
+        tasksRepository.updateTask(task1.copy(status = TaskStatus.COMPLETED))
+        val updatedTask = tasksRepository.getTaskById(task1.taskId)
+        assertEquals(task1.copy(status = TaskStatus.COMPLETED), updatedTask)
+    }
+
+    @Test
+    fun testDeleteTask(){
+        transaction (db) {
+            tasksRepository.insertTask(task1)
+            tasksRepository.insertTask(task2)
+        }
+
+        tasksRepository.deleteTask(task1.taskId)
+        val deletedTask = tasksRepository.getTaskById(task1.taskId)
+        assertNull(deletedTask)
+
+        val readItems = tasksRepository.getAllTasks()
+        assertEquals(1, readItems.size)
+        assertEquals(listOf(task2), readItems)
+    }
 
     @Test
     fun testGetAllTasks(){

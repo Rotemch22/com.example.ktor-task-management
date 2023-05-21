@@ -34,6 +34,19 @@ class TasksRepository {
         return id.value
     }
 
+    fun updateTask(task : Task) {
+        transaction (db) {
+            TasksTable.update({ TasksTable.id eq task.taskId })
+            {
+                it[title] = task.title
+                it[description] = task.description
+                it[status] = task.status
+                it[severity] = task.severity
+                it[owner] = task.owner
+            }
+        }
+    }
+
     fun getAllTasks(): List<Task> {
         return transaction(db) {
             TasksTable.selectAll().map {
@@ -47,6 +60,12 @@ class TasksRepository {
              TasksTable.select(TasksTable.id eq id).map {
                 TasksTable.toTask(it)
             }.firstOrNull()
+        }
+    }
+
+    fun deleteTask(id : Int){
+        transaction(db) {
+            TasksTable.deleteWhere { TasksTable.id eq id }
         }
     }
 
