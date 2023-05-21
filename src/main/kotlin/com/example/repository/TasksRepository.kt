@@ -3,12 +3,14 @@ package com.example.repository
 import com.example.models.Task
 import com.example.models.TaskSeverity
 import com.example.models.TaskStatus
+import mu.KotlinLogging
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.postgresql.ds.PGSimpleDataSource
 
+private val logger = KotlinLogging.logger {}
 
 class TasksRepository {
     private val dataSource = PGSimpleDataSource().apply {
@@ -31,6 +33,7 @@ class TasksRepository {
 
         }
 
+        logger.info { "task $task successfully created in db with id ${id.value}" }
         return id.value
     }
 
@@ -46,8 +49,12 @@ class TasksRepository {
             }
 
             if (rowsUpdated == 0) {
-                throw IllegalArgumentException("No task with id ${task.taskId} exists")
+                val errorMsg = "No task with id ${task.taskId} exists in the db"
+                logger.error { errorMsg }
+                throw IllegalArgumentException(errorMsg)
             }
+
+            logger.info { "task $task successfully updated in db" }
         }
     }
 
@@ -72,8 +79,12 @@ class TasksRepository {
             val rowsUpdated = TasksTable.deleteWhere { TasksTable.id eq id }
 
             if (rowsUpdated == 0) {
-                throw IllegalArgumentException("No task with id $id exists")
+                val errorMsg = "No task with id $id exists in the db"
+                logger.error { errorMsg }
+                throw IllegalArgumentException(errorMsg)
             }
+
+            logger.info { "task with id $id successfully deleted from the db" }
         }
     }
 

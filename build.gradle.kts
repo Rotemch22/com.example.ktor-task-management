@@ -36,6 +36,7 @@ dependencies {
     implementation( "com.zaxxer:HikariCP:3.4.5")
     implementation( "org.postgresql:postgresql:42.2.1")
     implementation( "org.jetbrains.kotlin:kotlin-test:$kotlin_version")
+    implementation ("io.github.microutils:kotlin-logging:2.0.11")
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktor_version")
     testImplementation("io.ktor:ktor-client-content-negotiation:$ktor_version")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
