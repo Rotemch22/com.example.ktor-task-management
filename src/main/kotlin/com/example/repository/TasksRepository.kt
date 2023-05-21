@@ -5,6 +5,7 @@ import com.example.models.TaskSeverity
 import com.example.models.TaskStatus
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.postgresql.ds.PGSimpleDataSource
 
@@ -36,17 +37,18 @@ class TasksRepository {
     fun getAllTasks(): List<Task> {
         return transaction(db) {
             TasksTable.selectAll().map {
-                val title = it[TasksTable.title]
-                val description = it[TasksTable.description]
-                val status = it[TasksTable.status]
-                val severity = it[TasksTable.severity]
-                val owner = it[TasksTable.owner]
-                val taskId = it[TasksTable.id].value
-                Task(title, description, status, severity, owner, taskId)
+                TasksTable.toTask(it)
             }
         }
     }
 
+    fun getTaskById(id: Int) : Task? {
+        return transaction(db) {
+             TasksTable.select(TasksTable.id eq id).map {
+                TasksTable.toTask(it)
+            }.firstOrNull()
+        }
+    }
 
     object TasksTable : IntIdTable() {
         val title = varchar("title", 100)
@@ -56,5 +58,13 @@ class TasksRepository {
         val owner = varchar("owner", 100).nullable()
     }
 
-
+    private fun TasksTable.toTask(it: ResultRow): Task {
+        val title = it[title]
+        val description = it[description]
+        val status = it[status]
+        val severity = it[severity]
+        val owner = it[owner]
+        val taskId = it[id].value
+        return Task(title, description, status, severity, owner, taskId)
+    }
 }

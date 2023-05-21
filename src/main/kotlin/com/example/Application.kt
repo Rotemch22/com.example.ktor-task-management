@@ -28,14 +28,12 @@ fun Application.module() {
         }
 
         get("/tasks/{id}"){
-            val taskId = call.parameters["id"]?.toInt()
-            val task = tasksRepository.getAllTasks(). find { it.taskId == taskId }
-            if (task == null){
-                call.respondText("task with id $taskId not found", status = HttpStatusCode.NotFound)
-            }
-            else{
-                call.respond(task)
-            }
+            val idStr = call.parameters["id"]
+            val taskId = idStr?.toIntOrNull() ?: throw java.lang.IllegalArgumentException("id argument must be numerical, given $idStr")
+
+            val task = tasksRepository.getTaskById(taskId)
+            task ?: call.respondText("task with id $taskId not found", status = HttpStatusCode.NotFound)
+            call.respond(task!!)
         }
 
         post ("/tasks") {
