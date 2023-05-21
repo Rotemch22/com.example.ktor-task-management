@@ -12,7 +12,9 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.testing.*
 import kotlin.test.*
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.runs
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 
@@ -59,7 +61,7 @@ class ApplicationTest {
         }
 
         val client = createClient {
-            install(ContentNegotiation) { // Error on the `install` call
+            install(ContentNegotiation) {
                 json()
             }
         }
@@ -82,7 +84,7 @@ class ApplicationTest {
         }
 
         val client = createClient {
-            install(ContentNegotiation) { // Error on the `install` call
+            install(ContentNegotiation) {
                 json()
             }
         }
@@ -102,7 +104,7 @@ class ApplicationTest {
         }
 
         val client = createClient {
-            install(ContentNegotiation) { // Error on the `install` call
+            install(ContentNegotiation) {
                 json()
             }
         }
@@ -120,6 +122,136 @@ class ApplicationTest {
                     "}")
         }
 
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+    }
+
+    @Test
+    fun `test update task`() = testApplication {
+        application{
+            module(tasksRepository)
+        }
+
+
+        val client = createClient {
+            install(ContentNegotiation) {
+                json()
+            }
+        }
+        val updatedTask = task1.copy(status = TaskStatus.COMPLETED)
+
+        every { tasksRepository.getTaskById(task1.taskId) } returns task1
+        every { tasksRepository.updateTask(updatedTask) } just runs
+
+        val response = client.put("/tasks/1"){
+            contentType(ContentType.Application.Json)
+            setBody(updatedTask)
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val responseTask: Task = Json.decodeFromString(Task.serializer(), response.bodyAsText())
+        assertEquals(updatedTask, responseTask)
+    }
+
+    @Test
+    fun `test update task with mismatch ids`() = testApplication {
+        application{
+            module(tasksRepository)
+        }
+
+
+        val client = createClient {
+            install(ContentNegotiation) {
+                json()
+            }
+        }
+
+
+        val response = client.put("/tasks/7"){
+            contentType(ContentType.Application.Json)
+            setBody(task1.copy(status = TaskStatus.COMPLETED))
+        }
+
+        assertEquals(HttpStatusCode.UnprocessableEntity, response.status)
+    }
+
+    @Test
+    fun `test update none existing task`() = testApplication {
+        application{
+            module(tasksRepository)
+        }
+
+
+        val client = createClient {
+            install(ContentNegotiation) {
+                json()
+            }
+        }
+
+        every { tasksRepository.getTaskById(7) } returns null
+
+        val response = client.put("/tasks/7"){
+            contentType(ContentType.Application.Json)
+            setBody(task1.copy(status = TaskStatus.COMPLETED, taskId = 7))
+        }
+
+        assertEquals(HttpStatusCode.NotFound, response.status)
+    }
+
+    @Test
+    fun `test delete task`() = testApplication {
+        application{
+            module(tasksRepository)
+        }
+
+
+        val client = createClient {
+            install(ContentNegotiation) {
+                json()
+            }
+        }
+
+        every { tasksRepository.getTaskById(1) } returns task1
+        every { tasksRepository.deleteTask(1) } just runs
+
+        val response = client.delete("/tasks/1")
+        assertEquals(HttpStatusCode.OK, response.status)
+    }
+
+    @Test
+    fun `test delete none existing task`() = testApplication {
+        application{
+            module(tasksRepository)
+        }
+
+
+        val client = createClient {
+            install(ContentNegotiation) {
+                json()
+            }
+        }
+
+        every { tasksRepository.getTaskById(7) } returns null
+
+        val response = client.delete("/tasks/7")
+        assertEquals(HttpStatusCode.NotFound, response.status)
+    }
+
+
+    @Test
+    fun `test delete none numerical task id`() = testApplication {
+        application{
+            module(tasksRepository)
+        }
+
+
+        val client = createClient {
+            install(ContentNegotiation) {
+                json()
+            }
+        }
+
+
+        val response = client.delete("/tasks/not a number")
         assertEquals(HttpStatusCode.BadRequest, response.status)
     }
 }

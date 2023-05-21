@@ -33,7 +33,7 @@ fun Application.module(tasksRepository: TasksRepository) {
             val id = call.parameters.getOrFail<Int>("id")
 
             val task = tasksRepository.getTaskById(id)
-            task ?: call.respondText("task with id $id not found", status = HttpStatusCode.NotFound)
+            task ?: call.respond(status = HttpStatusCode.NotFound, ErrorResponse("task with id $id not found"))
             call.respond(task!!)
         }
 
@@ -48,8 +48,15 @@ fun Application.module(tasksRepository: TasksRepository) {
             val id = call.parameters.getOrFail<Int>("id")
             val task = call.receive<Task>()
 
+            // verify that the id in the path matches the id in the json body
             if (id != task.taskId){
-                TODO("handle the case where the id in the path does not match the id in the task body")
+                call.respond(status = HttpStatusCode.UnprocessableEntity, "The task ID in the URL $id does not match the taskId in the request body ${task.taskId}")
+                return@put
+            }
+
+            if (tasksRepository.getTaskById(id) == null){
+                call.respond(status = HttpStatusCode.NotFound, ErrorResponse("Task with ID $id does not exist"))
+                return@put
             }
 
             tasksRepository.updateTask(task)
@@ -57,11 +64,15 @@ fun Application.module(tasksRepository: TasksRepository) {
         }
 
         delete("/tasks/{id}"){
-            val idStr = call.parameters["id"]
-            val taskId = idStr?.toIntOrNull() ?: throw java.lang.IllegalArgumentException("id argument must be numerical, given $idStr")
+            val id = call.parameters.getOrFail<Int>("id")
 
-            tasksRepository.deleteTask(taskId)
-            call.respondText("Task with id $taskId deleted successfully", status = HttpStatusCode.OK)
+            if (tasksRepository.getTaskById(id) == null){
+                call.respond(status = HttpStatusCode.NotFound, ErrorResponse("Task with ID $id does not exist"))
+                return@delete
+            }
+
+            tasksRepository.deleteTask(id)
+            call.respondText("Task with id $id deleted successfully", status = HttpStatusCode.OK)
         }
     }
 
@@ -69,3 +80,6 @@ fun Application.module(tasksRepository: TasksRepository) {
         json()
     }
 }
+
+@kotlinx.serialization.Serializable
+data class ErrorResponse(val error: String)

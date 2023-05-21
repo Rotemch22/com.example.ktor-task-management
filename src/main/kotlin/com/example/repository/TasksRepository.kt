@@ -11,12 +11,12 @@ import org.postgresql.ds.PGSimpleDataSource
 
 
 class TasksRepository {
-    val dataSource = PGSimpleDataSource().apply {
+    private val dataSource = PGSimpleDataSource().apply {
         user = "test"
         password = "test"
         databaseName = "tasks"
     }
-    val db = Database.connect(dataSource)
+    private val db = Database.connect(dataSource)
 
 
     fun insertTask(task: Task): Int {
@@ -36,13 +36,17 @@ class TasksRepository {
 
     fun updateTask(task : Task) {
         transaction (db) {
-            TasksTable.update({ TasksTable.id eq task.taskId })
+            val rowsUpdated = TasksTable.update({ TasksTable.id eq task.taskId })
             {
                 it[title] = task.title
                 it[description] = task.description
                 it[status] = task.status
                 it[severity] = task.severity
                 it[owner] = task.owner
+            }
+
+            if (rowsUpdated == 0) {
+                throw IllegalArgumentException("No task with id ${task.taskId} exists")
             }
         }
     }
@@ -65,7 +69,11 @@ class TasksRepository {
 
     fun deleteTask(id : Int){
         transaction(db) {
-            TasksTable.deleteWhere { TasksTable.id eq id }
+            val rowsUpdated = TasksTable.deleteWhere { TasksTable.id eq id }
+
+            if (rowsUpdated == 0) {
+                throw IllegalArgumentException("No task with id $id exists")
+            }
         }
     }
 
