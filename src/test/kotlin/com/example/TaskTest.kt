@@ -36,7 +36,7 @@ class TaskTest {
         )
 
         // Test toString() representation
-        val expectedToString = "Task(title=Sample Task, description=This is a sample task, status=NOT_STARTED, Severity=LOW, owner=John Doe)"
+        val expectedToString = "Task(title=Sample Task, description=This is a sample task, status=NOT_STARTED, severity=LOW, owner=John Doe, taskId=0)"
         assertEquals(expectedToString, task.toString())
     }
 }

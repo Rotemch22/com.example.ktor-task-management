@@ -1,7 +1,6 @@
 package com.example.models
 
 import kotlinx.serialization.Serializable
-import java.util.*
 
 enum class TaskStatus {
     NOT_STARTED,
@@ -21,9 +20,10 @@ data class Task(
     val description: String?,
     val status: TaskStatus,
     val severity: TaskSeverity,
-    val owner: String?
+    val owner: String?,
+    val taskId: Int = 0
 ) {
-    val taskId: String = UUID.randomUUID().toString()
+
 
 
 }
