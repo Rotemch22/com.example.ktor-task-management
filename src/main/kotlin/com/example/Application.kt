@@ -1,5 +1,6 @@
 package com.example
 
+import com.example.exceptions.Exceptions
 import com.example.models.Task
 import com.example.repository.TasksRepository
 import io.ktor.server.application.*
@@ -8,6 +9,7 @@ import io.ktor.server.netty.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -28,6 +30,22 @@ fun main() {
 }
 
 fun Application.module(tasksRepository: TasksRepository) {
+    install(ContentNegotiation) {
+        json()
+    }
+
+    install(StatusPages) {
+        exception<Exceptions.TaskNotFoundException> { call, cause ->
+            call.respond(HttpStatusCode.NotFound, ErrorResponse(cause.message ?: ""))
+        }
+        exception<Exceptions.MismatchedTaskIdException> { call, cause ->
+            call.respond(HttpStatusCode.UnprocessableEntity, ErrorResponse(cause.message ?: ""))
+        }
+        exception<Exceptions.TaskDueDatePastException> { call, cause ->
+            call.respond(HttpStatusCode.BadRequest, ErrorResponse(cause.message ?: ""))
+        }
+    }
+
     routing {
         get("/tasks") {
             call.respond(Json.encodeToString(tasksRepository.getAllTasks()))
@@ -38,10 +56,8 @@ fun Application.module(tasksRepository: TasksRepository) {
 
             val task = tasksRepository.getTaskById(id)
             if (task == null){
-                val errorMsg = "task with id $id not found"
-                logger.error { errorMsg }
-                call.respond(status = HttpStatusCode.NotFound, ErrorResponse(errorMsg))
-                return@get
+                logger.error { "task with id $id not found" }
+                throw Exceptions.TaskNotFoundException(id)
             }
 
             call.respond(task)
@@ -51,10 +67,8 @@ fun Application.module(tasksRepository: TasksRepository) {
             val task = call.receive<Task>()
 
             if (task.dueDate.toJavaLocalDateTime().isBefore(LocalDateTime.now())){
-                val errorMsg = "Task $task can't be created with due date ${task.dueDate} in the past"
-                logger.error { errorMsg }
-                call.respond(status = HttpStatusCode.BadRequest, errorMsg)
-                return@post
+                logger.error { "Task $task can't be created with due date ${task.dueDate} in the past" }
+                throw Exceptions.TaskDueDatePastException(task)
             }
 
             val id = tasksRepository.insertTask(task)
@@ -69,25 +83,19 @@ fun Application.module(tasksRepository: TasksRepository) {
 
             // verify that the id in the path matches the id in the json body
             if (id != task.taskId){
-                val errorMsg = "The task ID in the URL $id does not match the taskId in the request body ${task.taskId}"
-                logger.error { errorMsg }
-                call.respond(status = HttpStatusCode.UnprocessableEntity, errorMsg)
-                return@put
+                logger.error { "The task ID in the URL $id does not match the taskId in the request body ${task.taskId}" }
+                throw Exceptions.MismatchedTaskIdException(id, task.taskId)
             }
 
             val currentTask = tasksRepository.getTaskById(id)
             if (currentTask == null){
-                val errorMsg = "Task with ID $id does not exist"
-                logger.error { errorMsg }
-                call.respond(status = HttpStatusCode.NotFound, ErrorResponse(errorMsg))
-                return@put
+                logger.error { "Task with ID $id does not exist and can't be updated" }
+                throw Exceptions.TaskNotFoundException(id)
             }
 
             if (task.dueDate.toJavaLocalDateTime().isBefore(LocalDateTime.now())){
-                val errorMsg = "Task $task can't be updated with due date ${task.dueDate} in the past"
-                logger.error { errorMsg }
-                call.respond(status = HttpStatusCode.BadRequest, errorMsg)
-                return@put
+                logger.error { "Task $task can't be updated with due date ${task.dueDate} in the past" }
+                throw Exceptions.TaskDueDatePastException(task)
             }
 
             tasksRepository.updateTask(task)
@@ -99,10 +107,8 @@ fun Application.module(tasksRepository: TasksRepository) {
             val id = call.parameters.getOrFail<Int>("id")
 
             if (tasksRepository.getTaskById(id) == null){
-                val errorMsg = "Task with ID $id does not exist"
-                logger.error { errorMsg }
-                call.respond(status = HttpStatusCode.NotFound, ErrorResponse(errorMsg))
-                return@delete
+                logger.error { "Task with ID $id does not exist and can't be deleted" }
+                throw Exceptions.TaskNotFoundException(id)
             }
 
             tasksRepository.deleteTask(id)
@@ -111,9 +117,6 @@ fun Application.module(tasksRepository: TasksRepository) {
         }
     }
 
-    install(ContentNegotiation) {
-        json()
-    }
 }
 
 @kotlinx.serialization.Serializable
