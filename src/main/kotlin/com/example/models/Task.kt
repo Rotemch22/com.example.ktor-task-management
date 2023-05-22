@@ -1,5 +1,6 @@
 package com.example.models
 
+import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.Serializable
 
 enum class TaskStatus {
@@ -21,6 +22,7 @@ data class Task(
     val status: TaskStatus,
     val severity: TaskSeverity,
     val owner: String?,
+    val dueDate: LocalDateTime,
     val taskId: Int = 0
 ) {
 

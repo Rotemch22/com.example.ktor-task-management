@@ -15,14 +15,15 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
+import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 
 class ApplicationTest {
 
     private val tasksRepository = mockk<TasksRepository>()
-    private val task1 = Task("task1","task description1", TaskStatus.NOT_STARTED, TaskSeverity.HIGH, null, 1)
-    private val task2 = Task("task2","task description2", TaskStatus.IN_PROGRESS, TaskSeverity.URGENT, "some owner", 2)
+    private val task1 = Task("task1","task description1", TaskStatus.NOT_STARTED, TaskSeverity.HIGH, null, LocalDateTime.parse("2023-08-30T18:43:00"), 1)
+    private val task2 = Task("task2","task description2", TaskStatus.IN_PROGRESS, TaskSeverity.URGENT, "some owner", LocalDateTime.parse("2024-01-01T00:00:00"), 2)
 
     @Test
     fun `test get empty list of tasks`() = testApplication {
@@ -142,7 +143,7 @@ class ApplicationTest {
         every { tasksRepository.getTaskById(task1.taskId) } returns task1
         every { tasksRepository.updateTask(updatedTask) } just runs
 
-        val response = client.put("/tasks/1"){
+        val response = client.put("/tasks/${task1.taskId}"){
             contentType(ContentType.Application.Json)
             setBody(updatedTask)
         }
@@ -213,7 +214,7 @@ class ApplicationTest {
         every { tasksRepository.getTaskById(1) } returns task1
         every { tasksRepository.deleteTask(1) } just runs
 
-        val response = client.delete("/tasks/1")
+        val response = client.delete("/tasks/${task1.taskId}")
         assertEquals(HttpStatusCode.OK, response.status)
     }
 
@@ -252,6 +253,49 @@ class ApplicationTest {
 
 
         val response = client.delete("/tasks/not a number")
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+    }
+
+    @Test
+    fun `test create task with past due date`() = testApplication {
+        application{
+            module(tasksRepository)
+        }
+
+
+        val client = createClient {
+            install(ContentNegotiation) {
+                json()
+            }
+        }
+
+
+        val response = client.post("/tasks"){
+            contentType(ContentType.Application.Json)
+            setBody(task1.copy(dueDate = LocalDateTime.parse("2023-01-01T00:00:00")))
+        }
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+    }
+
+    @Test
+    fun `test update task with past due date`() = testApplication {
+        application{
+            module(tasksRepository)
+        }
+
+
+        val client = createClient {
+            install(ContentNegotiation) {
+                json()
+            }
+        }
+
+        every { tasksRepository.getTaskById(task1.taskId) } returns task1
+
+        val response = client.put("/tasks/${task1.taskId}"){
+            contentType(ContentType.Application.Json)
+            setBody(task1.copy(dueDate = LocalDateTime.parse("2023-01-01T00:00:00")))
+        }
         assertEquals(HttpStatusCode.BadRequest, response.status)
     }
 }

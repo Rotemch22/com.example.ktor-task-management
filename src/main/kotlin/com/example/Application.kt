@@ -12,9 +12,11 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.util.*
+import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import mu.KotlinLogging
+import java.time.LocalDateTime
 
 private val logger = KotlinLogging.logger {}
 
@@ -47,6 +49,14 @@ fun Application.module(tasksRepository: TasksRepository) {
 
         post ("/tasks") {
             val task = call.receive<Task>()
+
+            if (task.dueDate.toJavaLocalDateTime().isBefore(LocalDateTime.now())){
+                val errorMsg = "Task $task can't be created with due date ${task.dueDate} in the past"
+                logger.error { errorMsg }
+                call.respond(status = HttpStatusCode.BadRequest, errorMsg)
+                return@post
+            }
+
             val id = tasksRepository.insertTask(task)
 
             logger.info { "task $task created successfully" }
@@ -70,6 +80,13 @@ fun Application.module(tasksRepository: TasksRepository) {
                 val errorMsg = "Task with ID $id does not exist"
                 logger.error { errorMsg }
                 call.respond(status = HttpStatusCode.NotFound, ErrorResponse(errorMsg))
+                return@put
+            }
+
+            if (task.dueDate.toJavaLocalDateTime().isBefore(LocalDateTime.now())){
+                val errorMsg = "Task $task can't be updated with due date ${task.dueDate} in the past"
+                logger.error { errorMsg }
+                call.respond(status = HttpStatusCode.BadRequest, errorMsg)
                 return@put
             }
 

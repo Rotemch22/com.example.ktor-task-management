@@ -4,6 +4,7 @@ import com.example.models.Task
 import com.example.models.TaskSeverity
 import com.example.models.TaskStatus
 import com.example.repository.TasksRepository
+import kotlinx.datetime.LocalDateTime
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -22,8 +23,8 @@ val db = Database.connect(dataSource)
 
 class TasksTableRepositoryTest {
 
-    private val task1 = Task("task1","task description1", TaskStatus.NOT_STARTED, TaskSeverity.HIGH, null, 1)
-    private val task2 = Task("task2","task description2", TaskStatus.IN_PROGRESS, TaskSeverity.URGENT, "some owner", 2)
+    private val task1 = Task("task1","task description1", TaskStatus.NOT_STARTED, TaskSeverity.HIGH, null, LocalDateTime.parse("2023-08-30T18:43:00"),1)
+    private val task2 = Task("task2","task description2", TaskStatus.IN_PROGRESS, TaskSeverity.URGENT, "some owner", LocalDateTime.parse("2024-01-01T00:00:00"), 2)
     private val tasksRepository = TasksRepository()
 
     @Before

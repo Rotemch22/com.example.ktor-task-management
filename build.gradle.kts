@@ -37,6 +37,8 @@ dependencies {
     implementation( "org.postgresql:postgresql:42.2.1")
     implementation( "org.jetbrains.kotlin:kotlin-test:$kotlin_version")
     implementation ("io.github.microutils:kotlin-logging:2.0.11")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
+    implementation("org.jetbrains.exposed:exposed-java-time:0.30.1")
     testImplementation("io.ktor:ktor-server-tests-jvm:$ktor_version")
     testImplementation("io.ktor:ktor-client-content-negotiation:$ktor_version")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
