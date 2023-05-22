@@ -166,8 +166,9 @@ class ApplicationTest {
             }
         }
 
+        every { tasksRepository.getTaskById(task2.taskId) } returns task2
 
-        val response = client.put("/tasks/7"){
+        val response = client.put("/tasks/${task2.taskId}"){
             contentType(ContentType.Application.Json)
             setBody(task1.copy(status = TaskStatus.COMPLETED))
         }

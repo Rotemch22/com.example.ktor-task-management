@@ -56,50 +56,50 @@ fun Application.module(tasksRepository: TasksRepository) {
         get(TASK_ID_ROUTE){
             val id = call.parameters.getOrFail<Int>("id")
 
-            val task = tasksRepository.getTaskById(id)
-            if (task == null){
+            tasksRepository.getTaskById(id)?.let { task ->
+                call.respond(task)
+            } ?: kotlin.run {
                 logger.error { "task with id $id not found" }
                 throw Exceptions.TaskNotFoundException(id)
             }
-
-            call.respond(task)
         }
 
         post (TASKS_ROUTE) {
             val task = call.receive<Task>()
-
-            if (task.dueDate.toJavaLocalDateTime().isBefore(LocalDateTime.now())){
+            task.takeUnless { it.dueDate.toJavaLocalDateTime().isBefore(LocalDateTime.now()) }
+                ?.let { validTask ->
+                    val id = tasksRepository.insertTask(validTask)
+                    logger.info { "Task $validTask created successfully" }
+                    call.respond(status = HttpStatusCode.Created, validTask.copy(taskId = id))
+                } ?: run {
                 logger.error { "Task $task can't be created with due date ${task.dueDate} in the past" }
                 throw Exceptions.TaskDueDatePastException(task)
             }
-
-            val id = tasksRepository.insertTask(task)
-
-            logger.info { "task $task created successfully" }
-            call.respond(status = HttpStatusCode.Created, task.copy(taskId = id))
         }
 
         put (TASK_ID_ROUTE){
             val id = call.parameters.getOrFail<Int>("id")
             val task = call.receive<Task>()
-
-            // verify that the id in the path matches the id in the json body
-            if (id != task.taskId){
-                logger.error { "The task ID in the URL $id does not match the taskId in the request body ${task.taskId}" }
-                throw Exceptions.MismatchedTaskIdException(id, task.taskId)
-            }
-
             val currentTask = tasksRepository.getTaskById(id)
-            if (currentTask == null){
-                logger.error { "Task with ID $id does not exist and can't be updated" }
-                throw Exceptions.TaskNotFoundException(id)
+            when {
+                id != task.taskId -> {
+                    logger.error { "The task ID in the URL $id does not match the taskId in the request body ${task.taskId}" }
+                    throw Exceptions.MismatchedTaskIdException(id, task.taskId)
+                }
+                currentTask == null -> {
+                    logger.error { "Task with ID $id does not exist and can't be updated" }
+                    throw Exceptions.TaskNotFoundException(id)
+                }
+                task.dueDate.toJavaLocalDateTime().isBefore(LocalDateTime.now()) -> {
+                    logger.error { "Task $task can't be updated with due date ${task.dueDate} in the past" }
+                    throw Exceptions.TaskDueDatePastException(task)
+                }
+                else -> {
+                    tasksRepository.updateTask(task)
+                    logger.info { "Task with id ${task.taskId} updated successfully: $currentTask -> $task" }
+                    call.respond(status = HttpStatusCode.OK, task)
+                }
             }
-
-            if (task.dueDate.toJavaLocalDateTime().isBefore(LocalDateTime.now())){
-                logger.error { "Task $task can't be updated with due date ${task.dueDate} in the past" }
-                throw Exceptions.TaskDueDatePastException(task)
-            }
-
             tasksRepository.updateTask(task)
             logger.info { "task with id ${task.taskId} updated successfully: $currentTask -> $task"  }
             call.respond(status = HttpStatusCode.OK, task)
