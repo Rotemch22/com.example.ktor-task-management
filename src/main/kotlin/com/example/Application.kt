@@ -21,6 +21,8 @@ import mu.KotlinLogging
 import java.time.LocalDateTime
 
 private val logger = KotlinLogging.logger {}
+const val TASKS_ROUTE = "/tasks"
+const val TASK_ID_ROUTE = "/tasks/{id}"
 
 fun main() {
     val tasksRepository = TasksRepository()
@@ -47,11 +49,11 @@ fun Application.module(tasksRepository: TasksRepository) {
     }
 
     routing {
-        get("/tasks") {
+        get(TASKS_ROUTE) {
             call.respond(Json.encodeToString(tasksRepository.getAllTasks()))
         }
 
-        get("/tasks/{id}"){
+        get(TASK_ID_ROUTE){
             val id = call.parameters.getOrFail<Int>("id")
 
             val task = tasksRepository.getTaskById(id)
@@ -63,7 +65,7 @@ fun Application.module(tasksRepository: TasksRepository) {
             call.respond(task)
         }
 
-        post ("/tasks") {
+        post (TASKS_ROUTE) {
             val task = call.receive<Task>()
 
             if (task.dueDate.toJavaLocalDateTime().isBefore(LocalDateTime.now())){
@@ -77,7 +79,7 @@ fun Application.module(tasksRepository: TasksRepository) {
             call.respond(status = HttpStatusCode.Created, task.copy(taskId = id))
         }
 
-        put ("/tasks/{id}"){
+        put (TASK_ID_ROUTE){
             val id = call.parameters.getOrFail<Int>("id")
             val task = call.receive<Task>()
 
@@ -103,7 +105,7 @@ fun Application.module(tasksRepository: TasksRepository) {
             call.respond(status = HttpStatusCode.OK, task)
         }
 
-        delete("/tasks/{id}"){
+        delete(TASK_ID_ROUTE){
             val id = call.parameters.getOrFail<Int>("id")
 
             if (tasksRepository.getTaskById(id) == null){
