@@ -28,31 +28,15 @@ fun Route.taskRoutes(tasksService: TasksService) {
         val owner = call.request.queryParameters["owner"]
 
 
-        // verify the query params are valid before invoking the tasks service
-        val status = statusParam?.let {
-            runCatching { TaskStatus.valueOf(it.uppercase()) }
-                .onFailure {
-                    throw Exceptions.InvalidTaskQueryValueException(statusParam, "status")
-                }.getOrNull()
-        }
-
-        val severity = severityParam?.let {
-            runCatching { TaskSeverity.valueOf(it.uppercase()) }
-                .onFailure {
-                    throw Exceptions.InvalidTaskQueryValueException(severityParam, "severity")
-                }.getOrNull()
-        }
-
-        val order = orderParam?.let {
-            kotlin.runCatching { TaskSortOrder.valueOf(it.uppercase()) }
-                .onFailure {
-                    throw Exceptions.InvalidTaskQueryValueException(orderParam, "order")
-                }.getOrNull()
-        }
-
+        // parse the query params given into the corresponding enum classes and use throw an exception if not possible
+        val status = statusParam?.let { parseEnumValue<TaskStatus>(it, "status") }
+        val severity = severityParam?.let { parseEnumValue<TaskSeverity>(it, "severity") }
+        val order = orderParam?.let { parseEnumValue<TaskSortOrder>(it, "order") }
 
         call.respond(Json.encodeToString(tasksService.getTasks(TasksQueryRequest(status, severity, owner, order))))
     }
+
+
 
     get(TASK_ID_ROUTE) {
         val id = call.parameters.getOrFail<Int>("id")
@@ -85,4 +69,11 @@ fun Route.taskRoutes(tasksService: TasksService) {
 
         call.respondText("Task with id $id deleted successfully", status = HttpStatusCode.OK)
     }
+}
+
+inline fun <reified T : Enum<T>> parseEnumValue(value: String, paramName: String): T? {
+    return runCatching { enumValueOf<T>(value.uppercase()) }
+        .onFailure {
+            throw Exceptions.InvalidTaskQueryValueException(value, paramName)
+        }.getOrNull()
 }
