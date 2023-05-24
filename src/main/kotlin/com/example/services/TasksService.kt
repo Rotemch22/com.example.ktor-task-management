@@ -21,6 +21,7 @@ class TasksService(private val tasksRepository: TasksRepository) {
     }
 
     fun insertTask(task: Task): Int {
+        // verify the due date is in the future before creating a task
         task.takeUnless { it.dueDate.toJavaLocalDateTime().isBefore(LocalDateTime.now()) }
             ?.let { validTask ->
                 val id = tasksRepository.insertTask(validTask)
@@ -33,6 +34,7 @@ class TasksService(private val tasksRepository: TasksRepository) {
     }
 
     fun updateTask(id: Int, task: Task) {
+        // verify the URL id matches the task id in the body, if so verify a task with such id exist and the new dueDate is in the future
         val currentTask = getTaskById(id)
         when {
             id != task.taskId -> {

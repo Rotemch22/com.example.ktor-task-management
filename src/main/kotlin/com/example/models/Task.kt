@@ -24,8 +24,4 @@ data class Task(
     val owner: String? = null,
     val dueDate: LocalDateTime,
     val taskId: Int = 0
-) {
-
-
-
-}
+) {}

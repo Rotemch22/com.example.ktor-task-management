@@ -28,6 +28,7 @@ fun Route.taskRoutes(tasksService: TasksService) {
         val owner = call.request.queryParameters["owner"]
 
 
+        // verify the query params are valid before invoking the tasks service
         val status = statusParam?.let {
             runCatching { TaskStatus.valueOf(it.uppercase()) }
                 .onFailure {

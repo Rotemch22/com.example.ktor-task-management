@@ -54,6 +54,7 @@ class TasksRepository {
                 it[dueDate] = task.dueDate.toJavaLocalDateTime()
             }
 
+            // if no rows were updated then the task with given id does not exist
             if (rowsUpdated == 0) {
                 val errorMsg = "No task with id ${task.taskId} exists in the db"
                 logger.error { errorMsg }
@@ -74,12 +75,14 @@ class TasksRepository {
 
     fun getTasks(request: TasksQueryRequest): List<Task> {
         return transaction(db) {
+            // create query using the request if they are not null
             val tasksQuery = TasksTable.select {
                 (request.status?.let { TasksTable.status eq it } ?: Op.TRUE) and
                         (request.severity?.let { TasksTable.severity eq it } ?: Op.TRUE) and
                         (request.owner?.let { TasksTable.owner eq it } ?: Op.TRUE)
             }
 
+            // adding order to the query if the order in request is not null
             request.order?.let {
                 val taskSortOrder = when (request.order) {
                     TaskSortOrder.DESC -> SortOrder.DESC
@@ -105,6 +108,7 @@ class TasksRepository {
         transaction(db) {
             val rowsUpdated = TasksTable.deleteWhere { TasksTable.id eq id }
 
+            // if no rows were updated then the task with given id does not exist
             if (rowsUpdated == 0) {
                 val errorMsg = "No task with id $id exists in the db"
                 logger.error { errorMsg }
