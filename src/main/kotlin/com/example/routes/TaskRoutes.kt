@@ -2,32 +2,61 @@ package com.example.routes
 
 import com.example.exceptions.Exceptions
 import com.example.models.Task
-import com.example.repository.TasksRepository
+import com.example.models.TaskSeverity
+import com.example.models.TaskStatus
+import com.example.models.TasksQueryRequest.*
+import com.example.services.TasksService
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.util.*
-import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
-import java.time.LocalDateTime
 
 private val logger = KotlinLogging.logger {}
 const val TASKS_ROUTE = "/tasks"
 const val TASK_ID_ROUTE = "/tasks/{id}"
 
-fun Route.taskRoutes(tasksRepository: TasksRepository) {
+fun Route.taskRoutes(tasksService: TasksService) {
     get(TASKS_ROUTE) {
-        call.respond(Json.encodeToString(tasksRepository.getAllTasks()))
+        val statusParam = call.request.queryParameters["status"]
+        val severityParam = call.request.queryParameters["severity"]
+        val orderParam = call.request.queryParameters["order"]
+        val owner = call.request.queryParameters["owner"]
+
+
+        val status = statusParam?.let {
+            runCatching { TaskStatus.valueOf(it.uppercase()) }
+                .onFailure {
+                    throw Exceptions.InvalidTaskQueryValueException(statusParam, "status")
+                }.getOrNull()
+        }
+
+        val severity = severityParam?.let {
+            runCatching { TaskSeverity.valueOf(it.uppercase()) }
+                .onFailure {
+                    throw Exceptions.InvalidTaskQueryValueException(severityParam, "severity")
+                }.getOrNull()
+        }
+
+        val order = orderParam?.let {
+            kotlin.runCatching { TaskSortOrder.valueOf(it.uppercase()) }
+                .onFailure {
+                    throw Exceptions.InvalidTaskQueryValueException(orderParam, "order")
+                }.getOrNull()
+        }
+
+
+        call.respond(Json.encodeToString(tasksService.getTasks(TasksQueryRequest(status, severity, owner, order))))
     }
 
     get(TASK_ID_ROUTE) {
         val id = call.parameters.getOrFail<Int>("id")
 
-        tasksRepository.getTaskById(id)?.let { task ->
+        tasksService.getTaskById(id)?.let { task ->
             call.respond(task)
         } ?: kotlin.run {
             logger.error { "task with id $id not found" }
@@ -37,55 +66,22 @@ fun Route.taskRoutes(tasksRepository: TasksRepository) {
 
     post(TASKS_ROUTE) {
         val task = call.receive<Task>()
-        task.takeUnless { it.dueDate.toJavaLocalDateTime().isBefore(LocalDateTime.now()) }
-            ?.let { validTask ->
-                val id = tasksRepository.insertTask(validTask)
-                logger.info { "Task $validTask created successfully" }
-                call.respond(status = HttpStatusCode.Created, validTask.copy(taskId = id))
-            } ?: run {
-            logger.error { "Task $task can't be created with due date ${task.dueDate} in the past" }
-            throw Exceptions.TaskDueDatePastException(task)
-        }
+        val id = tasksService.insertTask(task)
+        call.respond(status = HttpStatusCode.Created, task.copy(taskId = id))
     }
 
     put(TASK_ID_ROUTE) {
         val id = call.parameters.getOrFail<Int>("id")
         val task = call.receive<Task>()
-        val currentTask = tasksRepository.getTaskById(id)
-        when {
-            id != task.taskId -> {
-                logger.error { "The task ID in the URL $id does not match the taskId in the request body ${task.taskId}" }
-                throw Exceptions.MismatchedTaskIdException(id, task.taskId)
-            }
-            currentTask == null -> {
-                logger.error { "Task with ID $id does not exist and can't be updated" }
-                throw Exceptions.TaskNotFoundException(id)
-            }
-            task.dueDate.toJavaLocalDateTime().isBefore(LocalDateTime.now()) -> {
-                logger.error { "Task $task can't be updated with due date ${task.dueDate} in the past" }
-                throw Exceptions.TaskDueDatePastException(task)
-            }
-            else -> {
-                tasksRepository.updateTask(task)
-                logger.info { "Task with id ${task.taskId} updated successfully: $currentTask -> $task" }
-                call.respond(status = HttpStatusCode.OK, task)
-            }
-        }
-        tasksRepository.updateTask(task)
-        logger.info { "task with id ${task.taskId} updated successfully: $currentTask -> $task" }
+
+        tasksService.updateTask(id, task)
         call.respond(status = HttpStatusCode.OK, task)
     }
 
     delete(TASK_ID_ROUTE) {
         val id = call.parameters.getOrFail<Int>("id")
+        tasksService.deleteTask(id)
 
-        if (tasksRepository.getTaskById(id) == null) {
-            logger.error { "Task with ID $id does not exist and can't be deleted" }
-            throw Exceptions.TaskNotFoundException(id)
-        }
-
-        tasksRepository.deleteTask(id)
-        logger.info { "task with id $id deleted successfully" }
         call.respondText("Task with id $id deleted successfully", status = HttpStatusCode.OK)
     }
 }

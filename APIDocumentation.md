@@ -2,13 +2,19 @@
 
 ## Endpoints
 
-### `GET /tasks`
+### GET /tasks
+Returns a list of tasks based on the provided query parameters.
 
-Returns a list of all tasks.
+Query Parameters
+
+- status (optional): Filters tasks by status. Possible values: NOT_STARTED, IN_PROGRESS, COMPLETED.
+- severity (optional): Filters tasks by severity. Possible values: LOW, MEDIUM, HIGH, URGENT.
+- owner (optional): Filters tasks by owner.
+- order (optional): Specifies the order in which the tasks should be sorted. Possible values: asc, desc.
 
 **Response**
 
-A list of Task objects in JSON format.
+A list of Task objects in JSON format, filtered and sorted based on the provided query parameters.
 
 ---
 

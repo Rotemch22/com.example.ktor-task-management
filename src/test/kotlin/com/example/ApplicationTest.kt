@@ -3,7 +3,9 @@ package com.example
 import com.example.models.Task
 import com.example.models.TaskSeverity
 import com.example.models.TaskStatus
+import com.example.models.TasksQueryRequest
 import com.example.repository.TasksRepository
+import com.example.services.TasksService
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -28,10 +30,10 @@ class ApplicationTest {
     @Test
     fun `test get empty list of tasks`() = testApplication {
         application{
-            module(tasksRepository)
+            module(TasksService(tasksRepository))
         }
 
-        every { tasksRepository.getAllTasks() } returns emptyList()
+        every { tasksRepository.getTasks(TasksQueryRequest.TasksQueryRequest(null, null, null, null)) } returns emptyList()
 
         val response = client.get("/tasks")
         assertEquals(HttpStatusCode.OK, response.status)
@@ -41,10 +43,10 @@ class ApplicationTest {
     @Test
     fun `test get list of tasks`() = testApplication {
         application{
-            module(tasksRepository)
+            module(TasksService(tasksRepository))
         }
 
-        every { tasksRepository.getAllTasks() } returns listOf(task1, task2)
+        every { tasksRepository.getTasks(TasksQueryRequest.TasksQueryRequest(null, null, null, null)) } returns listOf(task1, task2)
 
         val response = client.get("/tasks")
         val responseTasks: List<Task> = Json.decodeFromString(ListSerializer(Task.serializer()), response.bodyAsText())
@@ -53,12 +55,59 @@ class ApplicationTest {
         assertEquals(listOf(task1, task2), responseTasks)
     }
 
+    @Test
+    fun `test get list of tasks with filter`() = testApplication {
+        application{
+            module(TasksService(tasksRepository))
+        }
+
+        every { tasksRepository.getTasks(TasksQueryRequest.TasksQueryRequest(TaskStatus.NOT_STARTED, TaskSeverity.HIGH, null, null)) } returns listOf(task1)
+
+        var response = client.get("/tasks?status=not_started&severity=high")
+        var responseTasks: List<Task> = Json.decodeFromString(ListSerializer(Task.serializer()), response.bodyAsText())
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals(listOf(task1), responseTasks)
+
+        every { tasksRepository.getTasks(TasksQueryRequest.TasksQueryRequest(TaskStatus.NOT_STARTED, TaskSeverity.HIGH, "some owner", null)) } returns listOf()
+
+        response = client.get("/tasks?status=not_started&severity=high&owner=some owner")
+        responseTasks = Json.decodeFromString(ListSerializer(Task.serializer()), response.bodyAsText())
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals(listOf(), responseTasks)
+    }
+
+    @Test
+    fun `test get list of tasks with order`() = testApplication {
+        application{
+            module(TasksService(tasksRepository))
+        }
+
+        every { tasksRepository.getTasks(TasksQueryRequest.TasksQueryRequest(null, null, null, TasksQueryRequest.TaskSortOrder.DESC)) } returns listOf(task2, task1)
+
+        val response = client.get("/tasks?order=desc")
+        val responseTasks: List<Task> = Json.decodeFromString(ListSerializer(Task.serializer()), response.bodyAsText())
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals(listOf(task2, task1), responseTasks)
+    }
+
+    @Test
+    fun `test get list of tasks with invalid query`() = testApplication {
+        application{
+            module(TasksService(tasksRepository))
+        }
+
+        val response = client.get("/tasks?severity=super_urgent")
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+    }
 
 
     @Test
     fun `test post task`() = testApplication {
         application{
-            module(tasksRepository)
+            module(TasksService(tasksRepository))
         }
 
         val client = createClient {
@@ -72,7 +121,7 @@ class ApplicationTest {
             contentType(ContentType.Application.Json)
             setBody(task1)
         }
-
+        println("TEST: " + response.bodyAsText())
         val responseTask: Task = Json.decodeFromString(Task.serializer(), response.bodyAsText())
         assertEquals(HttpStatusCode.Created, response.status)
         assertEquals(task1, responseTask)
@@ -81,7 +130,7 @@ class ApplicationTest {
     @Test
     fun `test post task missing body`() = testApplication {
         application{
-            module(tasksRepository)
+            module(TasksService(tasksRepository))
         }
 
         val client = createClient {
@@ -101,7 +150,7 @@ class ApplicationTest {
     @Test
     fun `test post task invalid body`() = testApplication {
         application{
-            module(tasksRepository)
+            module(TasksService(tasksRepository))
         }
 
         val client = createClient {
@@ -129,7 +178,7 @@ class ApplicationTest {
     @Test
     fun `test update task`() = testApplication {
         application{
-            module(tasksRepository)
+            module(TasksService(tasksRepository))
         }
 
 
@@ -156,7 +205,7 @@ class ApplicationTest {
     @Test
     fun `test update task with mismatch ids`() = testApplication {
         application{
-            module(tasksRepository)
+            module(TasksService(tasksRepository))
         }
 
 
@@ -179,7 +228,7 @@ class ApplicationTest {
     @Test
     fun `test update none existing task`() = testApplication {
         application{
-            module(tasksRepository)
+            module(TasksService(tasksRepository))
         }
 
 
@@ -202,7 +251,7 @@ class ApplicationTest {
     @Test
     fun `test delete task`() = testApplication {
         application{
-            module(tasksRepository)
+            module(TasksService(tasksRepository))
         }
 
 
@@ -222,7 +271,7 @@ class ApplicationTest {
     @Test
     fun `test delete none existing task`() = testApplication {
         application{
-            module(tasksRepository)
+            module(TasksService(tasksRepository))
         }
 
 
@@ -242,7 +291,7 @@ class ApplicationTest {
     @Test
     fun `test delete none numerical task id`() = testApplication {
         application{
-            module(tasksRepository)
+            module(TasksService(tasksRepository))
         }
 
 
@@ -260,7 +309,7 @@ class ApplicationTest {
     @Test
     fun `test create task with past due date`() = testApplication {
         application{
-            module(tasksRepository)
+            module(TasksService(tasksRepository))
         }
 
 
@@ -281,7 +330,7 @@ class ApplicationTest {
     @Test
     fun `test update task with past due date`() = testApplication {
         application{
-            module(tasksRepository)
+            module(TasksService(tasksRepository))
         }
 
 

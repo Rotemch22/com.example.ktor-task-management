@@ -18,10 +18,10 @@ enum class TaskSeverity {
 @Serializable
 data class Task(
     val title: String,
-    val description: String?,
+    val description: String? = null,
     val status: TaskStatus,
     val severity: TaskSeverity,
-    val owner: String?,
+    val owner: String? = null,
     val dueDate: LocalDateTime,
     val taskId: Int = 0
 ) {

@@ -4,6 +4,7 @@ import com.example.exceptions.ErrorResponse
 import com.example.exceptions.Exceptions
 import com.example.repository.TasksRepository
 import com.example.routes.taskRoutes
+import com.example.services.TasksService
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
@@ -17,11 +18,11 @@ import io.ktor.server.routing.*
 
 fun main() {
     embeddedServer(Netty, port = 8080, host = "0.0.0.0") {
-        module(TasksRepository())
+        module(TasksService(TasksRepository()))
     }.start(wait = true)
 }
 
-fun Application.module(tasksRepository: TasksRepository) {
+fun Application.module(tasksService: TasksService) {
     install(ContentNegotiation) {
         json()
     }
@@ -36,10 +37,13 @@ fun Application.module(tasksRepository: TasksRepository) {
         exception<Exceptions.TaskDueDatePastException> { call, cause ->
             call.respond(HttpStatusCode.BadRequest, ErrorResponse(cause.message ?: ""))
         }
+        exception<Exceptions.InvalidTaskQueryValueException> { call, cause ->
+            call.respond(HttpStatusCode.BadRequest, ErrorResponse(cause.message ?: ""))
+        }
     }
 
     routing {
-        taskRoutes(tasksRepository)
+        taskRoutes(tasksService)
     }
 
 }

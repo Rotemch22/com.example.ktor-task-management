@@ -3,6 +3,8 @@ package com.example.repository
 import com.example.models.Task
 import com.example.models.TaskSeverity
 import com.example.models.TaskStatus
+import com.example.models.TasksQueryRequest.TasksQueryRequest
+import com.example.models.TasksQueryRequest.TaskSortOrder
 import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toKotlinLocalDateTime
 import mu.KotlinLogging
@@ -40,8 +42,8 @@ class TasksRepository {
         return id.value
     }
 
-    fun updateTask(task : Task) {
-        transaction (db) {
+    fun updateTask(task: Task) {
+        transaction(db) {
             val rowsUpdated = TasksTable.update({ TasksTable.id eq task.taskId })
             {
                 it[title] = task.title
@@ -70,15 +72,36 @@ class TasksRepository {
         }
     }
 
-    fun getTaskById(id: Int) : Task? {
+    fun getTasks(request: TasksQueryRequest): List<Task> {
         return transaction(db) {
-             TasksTable.select(TasksTable.id eq id).map {
+            val tasksQuery = TasksTable.select {
+                (request.status?.let { TasksTable.status eq it } ?: Op.TRUE) and
+                        (request.severity?.let { TasksTable.severity eq it } ?: Op.TRUE) and
+                        (request.owner?.let { TasksTable.owner eq it } ?: Op.TRUE)
+            }
+
+            request.order?.let {
+                val taskSortOrder = when (request.order) {
+                    TaskSortOrder.DESC -> SortOrder.DESC
+                    TaskSortOrder.ASC -> SortOrder.ASC
+                }
+                tasksQuery.orderBy(TasksTable.dueDate to taskSortOrder)
+            }
+
+            tasksQuery.map { TasksTable.toTask(it) }
+        }
+    }
+
+
+    fun getTaskById(id: Int): Task? {
+        return transaction(db) {
+            TasksTable.select(TasksTable.id eq id).map {
                 TasksTable.toTask(it)
             }.firstOrNull()
         }
     }
 
-    fun deleteTask(id : Int){
+    fun deleteTask(id: Int) {
         transaction(db) {
             val rowsUpdated = TasksTable.deleteWhere { TasksTable.id eq id }
 
