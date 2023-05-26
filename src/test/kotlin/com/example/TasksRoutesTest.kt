@@ -1,9 +1,6 @@
 package com.example
 
-import com.example.models.Task
-import com.example.models.TaskSeverity
-import com.example.models.TaskStatus
-import com.example.models.TasksQueryRequest
+import com.example.models.*
 import com.example.repository.TasksRepository
 import com.example.repository.UsersRepository
 import com.example.services.TasksService
@@ -36,7 +33,7 @@ class TasksRoutesTest {
             module(TasksService(tasksRepository), UsersService(usersRepository))
         }
 
-        every { tasksRepository.getTasks(TasksQueryRequest.TasksQueryRequest(null, null, null, null)) } returns emptyList()
+        every { tasksRepository.getTasks(TasksQueryRequest(null, null, null, null)) } returns emptyList()
 
         val response = client.get("/tasks")
         assertEquals(HttpStatusCode.OK, response.status)
@@ -49,7 +46,7 @@ class TasksRoutesTest {
             module(TasksService(tasksRepository), UsersService(usersRepository))
         }
 
-        every { tasksRepository.getTasks(TasksQueryRequest.TasksQueryRequest(null, null, null, null)) } returns listOf(task1, task2)
+        every { tasksRepository.getTasks(TasksQueryRequest(null, null, null, null)) } returns listOf(task1, task2)
 
         val response = client.get("/tasks")
         val responseTasks: List<Task> = Json.decodeFromString(ListSerializer(Task.serializer()), response.bodyAsText())
@@ -64,7 +61,7 @@ class TasksRoutesTest {
             module(TasksService(tasksRepository), UsersService(usersRepository))
         }
 
-        every { tasksRepository.getTasks(TasksQueryRequest.TasksQueryRequest(TaskStatus.NOT_STARTED, TaskSeverity.HIGH, null, null)) } returns listOf(task1)
+        every { tasksRepository.getTasks(TasksQueryRequest(TaskStatus.NOT_STARTED, TaskSeverity.HIGH, null, null)) } returns listOf(task1)
 
         var response = client.get("/tasks?status=not_started&severity=high")
         var responseTasks: List<Task> = Json.decodeFromString(ListSerializer(Task.serializer()), response.bodyAsText())
@@ -72,7 +69,7 @@ class TasksRoutesTest {
         assertEquals(HttpStatusCode.OK, response.status)
         assertEquals(listOf(task1), responseTasks)
 
-        every { tasksRepository.getTasks(TasksQueryRequest.TasksQueryRequest(TaskStatus.NOT_STARTED, TaskSeverity.HIGH, "some owner", null)) } returns listOf()
+        every { tasksRepository.getTasks(TasksQueryRequest(TaskStatus.NOT_STARTED, TaskSeverity.HIGH, "some owner", null)) } returns listOf()
 
         response = client.get("/tasks?status=not_started&severity=high&owner=some owner")
         responseTasks = Json.decodeFromString(ListSerializer(Task.serializer()), response.bodyAsText())
@@ -87,7 +84,7 @@ class TasksRoutesTest {
             module(TasksService(tasksRepository), UsersService(usersRepository))
         }
 
-        every { tasksRepository.getTasks(TasksQueryRequest.TasksQueryRequest(null, null, null, TasksQueryRequest.TaskSortOrder.DESC)) } returns listOf(task2, task1)
+        every { tasksRepository.getTasks(TasksQueryRequest(null, null, null, TaskSortOrder.DESC)) } returns listOf(task2, task1)
 
         val response = client.get("/tasks?order=desc")
         val responseTasks: List<Task> = Json.decodeFromString(ListSerializer(Task.serializer()), response.bodyAsText())

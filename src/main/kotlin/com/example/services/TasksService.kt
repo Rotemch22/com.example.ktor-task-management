@@ -12,7 +12,7 @@ private val logger = KotlinLogging.logger {}
 
 
 class TasksService(private val tasksRepository: TasksRepository) {
-    fun getTasks(query: TasksQueryRequest.TasksQueryRequest): List<Task> {
+    fun getTasks(query: TasksQueryRequest): List<Task> {
         return tasksRepository.getTasks(query)
     }
 

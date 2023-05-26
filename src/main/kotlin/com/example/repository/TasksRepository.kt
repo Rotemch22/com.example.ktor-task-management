@@ -1,10 +1,6 @@
 package com.example.repository
 
-import com.example.models.Task
-import com.example.models.TaskSeverity
-import com.example.models.TaskStatus
-import com.example.models.TasksQueryRequest.TasksQueryRequest
-import com.example.models.TasksQueryRequest.TaskSortOrder
+import com.example.models.*
 import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toKotlinLocalDateTime
 import mu.KotlinLogging

@@ -1,10 +1,7 @@
 package com.example.routes
 
 import com.example.exceptions.Exceptions
-import com.example.models.Task
-import com.example.models.TaskSeverity
-import com.example.models.TaskStatus
-import com.example.models.TasksQueryRequest.*
+import com.example.models.*
 import com.example.services.TasksService
 import io.ktor.http.*
 import io.ktor.server.application.*
