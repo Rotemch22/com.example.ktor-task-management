@@ -17,16 +17,27 @@ import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.postgresql.ds.PGSimpleDataSource
 
 
 fun main() {
-    val usersRepository = UsersRepository()
-    val tasksRepository = TasksRepository()
+    val dataSource = PGSimpleDataSource().apply {
+        user = "test"
+        password = "test"
+        databaseName = "tasks"
+        serverName = "localhost"
+        portNumber = 5432
+    }
+    val db = Database.connect(dataSource)
+
+    val usersRepository = UsersRepository(db)
+    val tasksRepository = TasksRepository(db)
 
     // Create the database tables
-    transaction {
+    transaction (db) {
         SchemaUtils.create(UsersRepository.UsersTable, TasksRepository.TasksTable)
     }
 
@@ -57,6 +68,9 @@ fun Application.module(tasksService: TasksService, usersService: UsersService) {
             call.respond(HttpStatusCode.BadRequest, ErrorResponse(cause.message ?: ""))
         }
         exception<Exceptions.EndUserWithoutManager> { call, cause ->
+            call.respond(HttpStatusCode.BadRequest, ErrorResponse(cause.message ?: ""))
+        }
+        exception<Exceptions.UserWithInvalidManagerId> { call, cause ->
             call.respond(HttpStatusCode.BadRequest, ErrorResponse(cause.message ?: ""))
         }
     }

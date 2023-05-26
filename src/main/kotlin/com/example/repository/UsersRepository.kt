@@ -7,18 +7,11 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.postgresql.ds.PGSimpleDataSource
 import org.mindrot.jbcrypt.BCrypt
 
 private val logger = KotlinLogging.logger {}
 
-class UsersRepository {
-    private val dataSource = PGSimpleDataSource().apply {
-        user = "test"
-        password = "test"
-        databaseName = "tasks"
-    }
-    private val db = Database.connect(dataSource)
+class UsersRepository (private val db: Database){
 
 
     fun insertUser(user: User): Int {
@@ -55,6 +48,18 @@ class UsersRepository {
         }
     }
 
+    fun getUserById(userId : Int?): User? {
+        return transaction (db) {
+            UsersTable.getUsersWithManagerData(UsersTable.id eq userId).firstOrNull()
+        }
+    }
+
+    fun getAllUsers(): List<User> {
+        return transaction (db) {
+            UsersTable.getUsersWithManagerData()
+        }
+    }
+
     fun initializeAdminUser() {
         transaction (db) {
             // Check if admin user already exists
@@ -80,9 +85,9 @@ class UsersRepository {
         val manager = reference("manager", UsersTable).nullable()
     }
 
-    private fun UsersTable.getUsersWithManagerData(where : Op<Boolean>): List<User> {
+    private fun UsersTable.getUsersWithManagerData(where : Op<Boolean> = Op.TRUE): List<User> {
         val managerTable = UsersTable.alias("managerTable")
-        return UsersTable.innerJoin(managerTable, { manager }, { managerTable[UsersTable.id] })
+        return UsersTable.leftJoin(managerTable, { manager }, { managerTable[UsersTable.id] })
             .select { where }.map {
                 User(
                     userId = it[UsersTable.id].value,

@@ -18,17 +18,18 @@ import kotlin.test.assertNull
 
 
 class TasksTableRepositoryTest {
-    val dataSource = PGSimpleDataSource().apply {
+    private val dataSource = PGSimpleDataSource().apply {
         user = "test"
         password = "test"
-        databaseName = "tasks"
+        databaseName = "tasks_test"
+        serverName = "localhost"
+        portNumber = 5433
     }
-    val db = Database.connect(dataSource)
-
+    private val db = Database.connect(dataSource)
+    private val tasksRepository = TasksRepository(db)
 
     private val task1 = Task("task1","task description1", TaskStatus.NOT_STARTED, TaskSeverity.HIGH, null, LocalDateTime.parse("2023-08-30T18:43:00"),1)
     private val task2 = Task("task2","task description2", TaskStatus.IN_PROGRESS, TaskSeverity.URGENT, "some owner", LocalDateTime.parse("2024-01-01T00:00:00"), 2)
-    private val tasksRepository = TasksRepository()
 
     @Before
     fun resetDB(){

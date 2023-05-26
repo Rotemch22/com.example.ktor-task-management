@@ -26,13 +26,14 @@ import kotlinx.serialization.json.Json
 class TasksRoutesTest {
 
     private val tasksRepository = mockk<TasksRepository>()
+    private val usersRepository = mockk<UsersRepository>()
     private val task1 = Task("task1","task description1", TaskStatus.NOT_STARTED, TaskSeverity.HIGH, null, LocalDateTime.parse("2023-08-30T18:43:00"), 1)
     private val task2 = Task("task2","task description2", TaskStatus.IN_PROGRESS, TaskSeverity.URGENT, "some owner", LocalDateTime.parse("2024-01-01T00:00:00"), 2)
 
     @Test
     fun `test get empty list of tasks`() = testApplication {
         application{
-            module(TasksService(tasksRepository), UsersService(UsersRepository()))
+            module(TasksService(tasksRepository), UsersService(usersRepository))
         }
 
         every { tasksRepository.getTasks(TasksQueryRequest.TasksQueryRequest(null, null, null, null)) } returns emptyList()
@@ -45,7 +46,7 @@ class TasksRoutesTest {
     @Test
     fun `test get list of tasks`() = testApplication {
         application{
-            module(TasksService(tasksRepository), UsersService(UsersRepository()))
+            module(TasksService(tasksRepository), UsersService(usersRepository))
         }
 
         every { tasksRepository.getTasks(TasksQueryRequest.TasksQueryRequest(null, null, null, null)) } returns listOf(task1, task2)
@@ -60,7 +61,7 @@ class TasksRoutesTest {
     @Test
     fun `test get list of tasks with filter`() = testApplication {
         application{
-            module(TasksService(tasksRepository), UsersService(UsersRepository()))
+            module(TasksService(tasksRepository), UsersService(usersRepository))
         }
 
         every { tasksRepository.getTasks(TasksQueryRequest.TasksQueryRequest(TaskStatus.NOT_STARTED, TaskSeverity.HIGH, null, null)) } returns listOf(task1)
@@ -83,7 +84,7 @@ class TasksRoutesTest {
     @Test
     fun `test get list of tasks with order`() = testApplication {
         application{
-            module(TasksService(tasksRepository), UsersService(UsersRepository()))
+            module(TasksService(tasksRepository), UsersService(usersRepository))
         }
 
         every { tasksRepository.getTasks(TasksQueryRequest.TasksQueryRequest(null, null, null, TasksQueryRequest.TaskSortOrder.DESC)) } returns listOf(task2, task1)
@@ -98,7 +99,7 @@ class TasksRoutesTest {
     @Test
     fun `test get list of tasks with invalid query`() = testApplication {
         application{
-            module(TasksService(tasksRepository), UsersService(UsersRepository()))
+            module(TasksService(tasksRepository), UsersService(usersRepository))
         }
 
         val response = client.get("/tasks?severity=super_urgent")
@@ -109,7 +110,7 @@ class TasksRoutesTest {
     @Test
     fun `test post task`() = testApplication {
         application{
-            module(TasksService(tasksRepository), UsersService(UsersRepository()))
+            module(TasksService(tasksRepository), UsersService(usersRepository))
         }
 
         val client = createClient {
@@ -132,7 +133,7 @@ class TasksRoutesTest {
     @Test
     fun `test post task missing body`() = testApplication {
         application{
-            module(TasksService(tasksRepository), UsersService(UsersRepository()))
+            module(TasksService(tasksRepository), UsersService(usersRepository))
         }
 
         val client = createClient {
@@ -152,7 +153,7 @@ class TasksRoutesTest {
     @Test
     fun `test post task invalid body`() = testApplication {
         application{
-            module(TasksService(tasksRepository), UsersService(UsersRepository()))
+            module(TasksService(tasksRepository), UsersService(usersRepository))
         }
 
         val client = createClient {
@@ -180,7 +181,7 @@ class TasksRoutesTest {
     @Test
     fun `test update task`() = testApplication {
         application{
-            module(TasksService(tasksRepository), UsersService(UsersRepository()))
+            module(TasksService(tasksRepository), UsersService(usersRepository))
         }
 
 
@@ -207,7 +208,7 @@ class TasksRoutesTest {
     @Test
     fun `test update task with mismatch ids`() = testApplication {
         application{
-            module(TasksService(tasksRepository), UsersService(UsersRepository()))
+            module(TasksService(tasksRepository), UsersService(usersRepository))
         }
 
 
@@ -230,7 +231,7 @@ class TasksRoutesTest {
     @Test
     fun `test update none existing task`() = testApplication {
         application{
-            module(TasksService(tasksRepository), UsersService(UsersRepository()))
+            module(TasksService(tasksRepository), UsersService(usersRepository))
         }
 
 
@@ -253,7 +254,7 @@ class TasksRoutesTest {
     @Test
     fun `test delete task`() = testApplication {
         application{
-            module(TasksService(tasksRepository), UsersService(UsersRepository()))
+            module(TasksService(tasksRepository), UsersService(usersRepository))
         }
 
 
@@ -273,7 +274,7 @@ class TasksRoutesTest {
     @Test
     fun `test delete none existing task`() = testApplication {
         application{
-            module(TasksService(tasksRepository), UsersService(UsersRepository()))
+            module(TasksService(tasksRepository), UsersService(usersRepository))
         }
 
 
@@ -293,7 +294,7 @@ class TasksRoutesTest {
     @Test
     fun `test delete none numerical task id`() = testApplication {
         application{
-            module(TasksService(tasksRepository), UsersService(UsersRepository()))
+            module(TasksService(tasksRepository), UsersService(usersRepository))
         }
 
 
@@ -311,7 +312,7 @@ class TasksRoutesTest {
     @Test
     fun `test create task with past due date`() = testApplication {
         application{
-            module(TasksService(tasksRepository), UsersService(UsersRepository()))
+            module(TasksService(tasksRepository), UsersService(usersRepository))
         }
 
 
@@ -332,7 +333,7 @@ class TasksRoutesTest {
     @Test
     fun `test update task with past due date`() = testApplication {
         application{
-            module(TasksService(tasksRepository), UsersService(UsersRepository()))
+            module(TasksService(tasksRepository), UsersService(usersRepository))
         }
 
 

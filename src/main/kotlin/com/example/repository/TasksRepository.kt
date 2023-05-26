@@ -13,18 +13,10 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.`java-time`.datetime
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.postgresql.ds.PGSimpleDataSource
 
 private val logger = KotlinLogging.logger {}
 
-class TasksRepository {
-    private val dataSource = PGSimpleDataSource().apply {
-        user = "test"
-        password = "test"
-        databaseName = "tasks"
-    }
-    private val db = Database.connect(dataSource)
-
+class TasksRepository (private val db: Database) {
 
     fun insertTask(task: Task): Int {
         val id = transaction(db) {

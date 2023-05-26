@@ -15,14 +15,16 @@ import kotlin.test.assertEquals
 
 class UsersTableRepositoryTest {
 
-    val dataSource = PGSimpleDataSource().apply {
+    private val dataSource = PGSimpleDataSource().apply {
         user = "test"
         password = "test"
-        databaseName = "tasks"
+        databaseName = "tasks_test"
+        serverName = "localhost"
+        portNumber = 5433
     }
-    val db = Database.connect(dataSource)
+    private val db = Database.connect(dataSource)
 
-    private val usersRepository = UsersRepository()
+    private val usersRepository = UsersRepository(db)
 
     @Before
     fun resetDB(){
