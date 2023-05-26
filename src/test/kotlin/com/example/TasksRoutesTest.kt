@@ -5,7 +5,9 @@ import com.example.models.TaskSeverity
 import com.example.models.TaskStatus
 import com.example.models.TasksQueryRequest
 import com.example.repository.TasksRepository
+import com.example.repository.UsersRepository
 import com.example.services.TasksService
+import com.example.services.UsersService
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -21,7 +23,7 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 
-class ApplicationTest {
+class TasksRoutesTest {
 
     private val tasksRepository = mockk<TasksRepository>()
     private val task1 = Task("task1","task description1", TaskStatus.NOT_STARTED, TaskSeverity.HIGH, null, LocalDateTime.parse("2023-08-30T18:43:00"), 1)
@@ -30,7 +32,7 @@ class ApplicationTest {
     @Test
     fun `test get empty list of tasks`() = testApplication {
         application{
-            module(TasksService(tasksRepository))
+            module(TasksService(tasksRepository), UsersService(UsersRepository()))
         }
 
         every { tasksRepository.getTasks(TasksQueryRequest.TasksQueryRequest(null, null, null, null)) } returns emptyList()
@@ -43,7 +45,7 @@ class ApplicationTest {
     @Test
     fun `test get list of tasks`() = testApplication {
         application{
-            module(TasksService(tasksRepository))
+            module(TasksService(tasksRepository), UsersService(UsersRepository()))
         }
 
         every { tasksRepository.getTasks(TasksQueryRequest.TasksQueryRequest(null, null, null, null)) } returns listOf(task1, task2)
@@ -58,7 +60,7 @@ class ApplicationTest {
     @Test
     fun `test get list of tasks with filter`() = testApplication {
         application{
-            module(TasksService(tasksRepository))
+            module(TasksService(tasksRepository), UsersService(UsersRepository()))
         }
 
         every { tasksRepository.getTasks(TasksQueryRequest.TasksQueryRequest(TaskStatus.NOT_STARTED, TaskSeverity.HIGH, null, null)) } returns listOf(task1)
@@ -81,7 +83,7 @@ class ApplicationTest {
     @Test
     fun `test get list of tasks with order`() = testApplication {
         application{
-            module(TasksService(tasksRepository))
+            module(TasksService(tasksRepository), UsersService(UsersRepository()))
         }
 
         every { tasksRepository.getTasks(TasksQueryRequest.TasksQueryRequest(null, null, null, TasksQueryRequest.TaskSortOrder.DESC)) } returns listOf(task2, task1)
@@ -96,7 +98,7 @@ class ApplicationTest {
     @Test
     fun `test get list of tasks with invalid query`() = testApplication {
         application{
-            module(TasksService(tasksRepository))
+            module(TasksService(tasksRepository), UsersService(UsersRepository()))
         }
 
         val response = client.get("/tasks?severity=super_urgent")
@@ -107,7 +109,7 @@ class ApplicationTest {
     @Test
     fun `test post task`() = testApplication {
         application{
-            module(TasksService(tasksRepository))
+            module(TasksService(tasksRepository), UsersService(UsersRepository()))
         }
 
         val client = createClient {
@@ -130,7 +132,7 @@ class ApplicationTest {
     @Test
     fun `test post task missing body`() = testApplication {
         application{
-            module(TasksService(tasksRepository))
+            module(TasksService(tasksRepository), UsersService(UsersRepository()))
         }
 
         val client = createClient {
@@ -150,7 +152,7 @@ class ApplicationTest {
     @Test
     fun `test post task invalid body`() = testApplication {
         application{
-            module(TasksService(tasksRepository))
+            module(TasksService(tasksRepository), UsersService(UsersRepository()))
         }
 
         val client = createClient {
@@ -178,7 +180,7 @@ class ApplicationTest {
     @Test
     fun `test update task`() = testApplication {
         application{
-            module(TasksService(tasksRepository))
+            module(TasksService(tasksRepository), UsersService(UsersRepository()))
         }
 
 
@@ -205,7 +207,7 @@ class ApplicationTest {
     @Test
     fun `test update task with mismatch ids`() = testApplication {
         application{
-            module(TasksService(tasksRepository))
+            module(TasksService(tasksRepository), UsersService(UsersRepository()))
         }
 
 
@@ -228,7 +230,7 @@ class ApplicationTest {
     @Test
     fun `test update none existing task`() = testApplication {
         application{
-            module(TasksService(tasksRepository))
+            module(TasksService(tasksRepository), UsersService(UsersRepository()))
         }
 
 
@@ -251,7 +253,7 @@ class ApplicationTest {
     @Test
     fun `test delete task`() = testApplication {
         application{
-            module(TasksService(tasksRepository))
+            module(TasksService(tasksRepository), UsersService(UsersRepository()))
         }
 
 
@@ -271,7 +273,7 @@ class ApplicationTest {
     @Test
     fun `test delete none existing task`() = testApplication {
         application{
-            module(TasksService(tasksRepository))
+            module(TasksService(tasksRepository), UsersService(UsersRepository()))
         }
 
 
@@ -291,7 +293,7 @@ class ApplicationTest {
     @Test
     fun `test delete none numerical task id`() = testApplication {
         application{
-            module(TasksService(tasksRepository))
+            module(TasksService(tasksRepository), UsersService(UsersRepository()))
         }
 
 
@@ -309,7 +311,7 @@ class ApplicationTest {
     @Test
     fun `test create task with past due date`() = testApplication {
         application{
-            module(TasksService(tasksRepository))
+            module(TasksService(tasksRepository), UsersService(UsersRepository()))
         }
 
 
@@ -330,7 +332,7 @@ class ApplicationTest {
     @Test
     fun `test update task with past due date`() = testApplication {
         application{
-            module(TasksService(tasksRepository))
+            module(TasksService(tasksRepository), UsersService(UsersRepository()))
         }
 
 
