@@ -25,6 +25,7 @@ import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.mindrot.jbcrypt.BCrypt
 import org.postgresql.ds.PGSimpleDataSource
+import kotlin.reflect.KClass
 
 data class UserSession(val username: String) : Principal
 
@@ -60,24 +61,13 @@ fun Application.module(tasksService: TasksService, usersService: UsersService) {
     }
 
     install(StatusPages) {
-        exception<Exceptions.TaskNotFoundException> { call, cause ->
-            call.respond(HttpStatusCode.NotFound, ErrorResponse(cause.message ?: ""))
-        }
-        exception<Exceptions.MismatchedTaskIdException> { call, cause ->
-            call.respond(HttpStatusCode.UnprocessableEntity, ErrorResponse(cause.message ?: ""))
-        }
-        exception<Exceptions.TaskDueDatePastException> { call, cause ->
-            call.respond(HttpStatusCode.BadRequest, ErrorResponse(cause.message ?: ""))
-        }
-        exception<Exceptions.InvalidTaskQueryValueException> { call, cause ->
-            call.respond(HttpStatusCode.BadRequest, ErrorResponse(cause.message ?: ""))
-        }
-        exception<Exceptions.EndUserWithoutManager> { call, cause ->
-            call.respond(HttpStatusCode.BadRequest, ErrorResponse(cause.message ?: ""))
-        }
-        exception<Exceptions.UserWithInvalidManagerId> { call, cause ->
-            call.respond(HttpStatusCode.BadRequest, ErrorResponse(cause.message ?: ""))
-        }
+        exception(exceptionHandler(HttpStatusCode.NotFound, Exceptions.TaskNotFoundException::class))
+        exception(exceptionHandler(HttpStatusCode.UnprocessableEntity, Exceptions.MismatchedTaskIdException::class))
+        exception(exceptionHandler(HttpStatusCode.BadRequest, Exceptions.TaskDueDatePastException::class))
+        exception(exceptionHandler(HttpStatusCode.BadRequest, Exceptions.InvalidTaskQueryValueException::class))
+        exception(exceptionHandler(HttpStatusCode.BadRequest, Exceptions.EndUserWithoutManager::class))
+        exception(exceptionHandler(HttpStatusCode.BadRequest, Exceptions.UserWithInvalidManagerId::class))
+
     }
 
     install(Sessions) {
@@ -163,3 +153,13 @@ fun buildLoginForm(): String {
         </html>
     """.trimIndent()
 }
+
+fun <T : Exception> exceptionHandler(
+    status: HttpStatusCode,
+    exceptionType: KClass<T>
+): suspend (ApplicationCall, Throwable) -> Unit =
+    { call, cause ->
+        if (cause::class == exceptionType) {
+            call.respond(status, ErrorResponse(cause.message ?: ""))
+        }
+    }
