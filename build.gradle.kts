@@ -38,7 +38,7 @@ dependencies {
     implementation( "org.jetbrains.exposed:exposed-jdbc:$exposed_version")
     implementation( "com.zaxxer:HikariCP:3.4.5")
     implementation( "org.postgresql:postgresql:42.2.1")
-    implementation( "org.jetbrains.kotlin:kotlin-test:$kotlin_version")
+    implementation ("io.insert-koin:koin-core:3.1.2")
     implementation ("io.github.microutils:kotlin-logging:2.0.11")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
     implementation("org.jetbrains.exposed:exposed-java-time:0.30.1")
@@ -49,4 +49,5 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlin_version")
     testImplementation("io.ktor:ktor-server-test-host:$ktor_version")
     testImplementation("io.mockk:mockk:${mockkVersion}")
+    testImplementation("io.ktor:ktor-server-test-host:${ktor_version}")
 }

@@ -1,6 +1,7 @@
 package com.example.routes
 
 import com.example.exceptions.Exceptions
+import com.example.getLoggedInUsername
 import com.example.models.*
 import com.example.services.TasksService
 import io.ktor.http.*
@@ -11,9 +12,7 @@ import io.ktor.server.routing.*
 import io.ktor.server.util.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import mu.KotlinLogging
 
-private val logger = KotlinLogging.logger {}
 const val TASKS_ROUTE = "/tasks"
 const val TASK_ID_ROUTE = "/tasks/{id}"
 
@@ -23,47 +22,45 @@ fun Route.taskRoutes(tasksService: TasksService) {
         val severityParam = call.request.queryParameters["severity"]
         val orderParam = call.request.queryParameters["order"]
         val owner = call.request.queryParameters["owner"]
-
+        val loggedInUsername = call.getLoggedInUsername()
 
         // parse the query params given into the corresponding enum classes and use throw an exception if not possible
         val status = statusParam?.let { parseEnumValue<TaskStatus>(it, "status") }
         val severity = severityParam?.let { parseEnumValue<TaskSeverity>(it, "severity") }
         val order = orderParam?.let { parseEnumValue<TaskSortOrder>(it, "order") }
 
-        call.respond(Json.encodeToString(tasksService.getTasks(TasksQueryRequest(status, severity, owner, order))))
+        call.respond(Json.encodeToString(tasksService.getTasks(loggedInUsername, TasksQueryRequest(status, severity, owner, order))))
     }
-
-
 
     get(TASK_ID_ROUTE) {
         val id = call.parameters.getOrFail<Int>("id")
+        val loggedInUsername = call.getLoggedInUsername()
 
-        tasksService.getTaskById(id)?.let { task ->
-            call.respond(task)
-        } ?: kotlin.run {
-            logger.error { "task with id $id not found" }
-            throw Exceptions.TaskNotFoundException(id)
-        }
+        call.respond(tasksService.getAuthorizedTaskById(loggedInUsername, id))
     }
 
     post(TASKS_ROUTE) {
         val task = call.receive<Task>()
-        val id = tasksService.insertTask(task)
+        val loggedInUsername = call.getLoggedInUsername()
+
+        val id = tasksService.insertTask(loggedInUsername, task)
         call.respond(status = HttpStatusCode.Created, task.copy(taskId = id))
     }
 
     put(TASK_ID_ROUTE) {
         val id = call.parameters.getOrFail<Int>("id")
         val task = call.receive<Task>()
+        val loggedInUsername = call.getLoggedInUsername()
 
-        tasksService.updateTask(id, task)
+        tasksService.updateTask(loggedInUsername, id, task)
         call.respond(status = HttpStatusCode.OK, task)
     }
 
     delete(TASK_ID_ROUTE) {
         val id = call.parameters.getOrFail<Int>("id")
-        tasksService.deleteTask(id)
+        val loggedInUsername = call.getLoggedInUsername()
 
+        tasksService.deleteTask(loggedInUsername, id)
         call.respondText("Task with id $id deleted successfully", status = HttpStatusCode.OK)
     }
 }

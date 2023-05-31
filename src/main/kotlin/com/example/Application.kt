@@ -23,10 +23,14 @@ import io.ktor.server.sessions.*
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.koin.core.context.GlobalContext.startKoin
+import org.koin.dsl.module
+import org.koin.java.KoinJavaComponent.getKoin
 import org.mindrot.jbcrypt.BCrypt
 import org.postgresql.ds.PGSimpleDataSource
 import kotlin.reflect.KClass
 
+@kotlinx.serialization.Serializable
 data class UserSession(val username: String) : Principal
 
 fun main() {
@@ -39,19 +43,29 @@ fun main() {
     }
     val db = Database.connect(dataSource)
 
-    val usersRepository = UsersRepository(db)
-    val tasksRepository = TasksRepository(db)
+    val appModule = module {
+        single { TasksRepository(db) }  // Inject the database dependency for the TasksRepository
+        single { UsersRepository(db) }  // Inject the database dependency for the UsersRepository
+        single { UsersService(get()) }  // Inject the UsersRepository dependency for the UsersService
+        single { TasksService(get(), get()) } // Inject the TasksRepository and UsersService dependencies for the TasksService
+    }
+
+    startKoin {
+        modules(appModule)
+    }
 
     // Create the database tables
     transaction(db) {
         SchemaUtils.create(UsersRepository.UsersTable, TasksRepository.TasksTable)
     }
 
-    val usersService = UsersService(usersRepository)
+    val usersService: UsersService = getKoin().get()
+    val tasksService: TasksService = getKoin().get()
+
     usersService.initializeAdminUser()
 
     embeddedServer(Netty, port = 8080, host = "0.0.0.0") {
-        module(TasksService(tasksRepository), usersService)
+        module(tasksService, usersService)
     }.start(wait = true)
 }
 
@@ -67,7 +81,9 @@ fun Application.module(tasksService: TasksService, usersService: UsersService) {
         exception(exceptionHandler(HttpStatusCode.BadRequest, Exceptions.InvalidTaskQueryValueException::class))
         exception(exceptionHandler(HttpStatusCode.BadRequest, Exceptions.EndUserWithoutManager::class))
         exception(exceptionHandler(HttpStatusCode.BadRequest, Exceptions.UserWithInvalidManagerId::class))
-
+        exception(exceptionHandler(HttpStatusCode.Unauthorized, Exceptions.NoLoggedInUserException::class))
+        exception(exceptionHandler(HttpStatusCode.Unauthorized, Exceptions.NoUserFoundForLoggedInUserException::class))
+        exception(exceptionHandler(HttpStatusCode.Unauthorized, Exceptions.TaskNotAuthorizedForUser::class))
     }
 
     install(Sessions) {
@@ -163,3 +179,9 @@ fun <T : Exception> exceptionHandler(
             call.respond(status, ErrorResponse(cause.message ?: ""))
         }
     }
+
+fun ApplicationCall.getLoggedInUsername(): String {
+    val userSession: UserSession? = sessions.get()
+    return userSession?.username ?: throw Exceptions.NoLoggedInUserException ()
+
+}

@@ -1,6 +1,7 @@
 package com.example.services
 
 import com.example.exceptions.Exceptions
+import com.example.models.Role
 import com.example.models.Task
 import com.example.models.TasksQueryRequest
 import com.example.repository.TasksRepository
@@ -11,16 +12,25 @@ import java.time.LocalDateTime
 private val logger = KotlinLogging.logger {}
 
 
-class TasksService(private val tasksRepository: TasksRepository) {
-    fun getTasks(query: TasksQueryRequest): List<Task> {
-        return tasksRepository.getTasks(query)
+class TasksService(private val tasksRepository: TasksRepository, private val usersService: UsersService) {
+
+    fun getTasks(loggedInUsername : String, query: TasksQueryRequest): List<Task> {
+        return tasksRepository.getTasks(query).filter { isTaskAuthorizedForUser(it, loggedInUsername) }
     }
 
-    fun getTaskById(id: Int): Task? {
-        return tasksRepository.getTaskById(id)
+    fun getAuthorizedTaskById(loggedInUsername : String, id: Int): Task {
+        return tasksRepository.getTaskById(id)?.also { task ->
+            if (!isTaskAuthorizedForUser(task, loggedInUsername)){
+                throw Exceptions.TaskNotAuthorizedForUser(task, loggedInUsername)
+            }
+        } ?: throw Exceptions.TaskNotFoundException(id)
     }
 
-    fun insertTask(task: Task): Int {
+
+    fun insertTask(loggedInUsername : String, task: Task): Int {
+        if (!isTaskAuthorizedForUser(task, loggedInUsername)){
+            throw Exceptions.TaskNotAuthorizedForUser(task, loggedInUsername)
+        }
         // verify the due date is in the future before creating a task
         task.takeUnless { it.dueDate.toJavaLocalDateTime().isBefore(LocalDateTime.now()) }
             ?.let { validTask ->
@@ -33,17 +43,13 @@ class TasksService(private val tasksRepository: TasksRepository) {
         }
     }
 
-    fun updateTask(id: Int, task: Task) {
+    fun updateTask(loggedInUsername : String, id: Int, task: Task) {
         // verify the URL id matches the task id in the body, if so verify a task with such id exist and the new dueDate is in the future
-        val currentTask = getTaskById(id)
+        val currentTask = getAuthorizedTaskById(loggedInUsername, id)
         when {
             id != task.taskId -> {
                 logger.error { "The task ID in the URL $id does not match the taskId in the request body ${task.taskId}" }
                 throw Exceptions.MismatchedTaskIdException(id, task.taskId)
-            }
-            currentTask == null -> {
-                logger.error { "Task with ID $id does not exist and can't be updated" }
-                throw Exceptions.TaskNotFoundException(id)
             }
             task.dueDate.toJavaLocalDateTime().isBefore(LocalDateTime.now()) -> {
                 logger.error { "Task $task can't be updated with due date ${task.dueDate} in the past" }
@@ -56,13 +62,26 @@ class TasksService(private val tasksRepository: TasksRepository) {
         }
     }
 
-    fun deleteTask(id: Int) {
-        if (getTaskById(id) == null) {
-            logger.error { "Task with ID $id does not exist and can't be deleted" }
-            throw Exceptions.TaskNotFoundException(id)
+    fun deleteTask(loggedInUsername : String, id: Int) {
+        val task = getAuthorizedTaskById(loggedInUsername, id)
+        if (!isTaskAuthorizedForUser(task, loggedInUsername)){
+            throw Exceptions.TaskNotAuthorizedForUser(task, loggedInUsername)
         }
 
         tasksRepository.deleteTask(id)
         logger.info { "task with id $id deleted successfully" }
+    }
+
+    // returns true if
+    //   task has no owner
+    //   task's owner is the logged-in user
+    //   task's owner is managed by the current logged-in user who is a manger
+    //   logged-in user is admin
+    private fun isTaskAuthorizedForUser(task: Task, username: String) : Boolean {
+        val user = username.let { usersService.getUserByUserName(username) ?: throw Exceptions.NoUserFoundForLoggedInUserException(username) }
+
+        return task.owner == null || task.owner == user.userId.toString() || user.role == Role.ADMIN ||
+                (user.role == Role.MANAGER && usersService.getManagersToUsersMap().getOrDefault(user, emptyList())
+                    .any { it.userId.toString() == task.owner })
     }
 }
