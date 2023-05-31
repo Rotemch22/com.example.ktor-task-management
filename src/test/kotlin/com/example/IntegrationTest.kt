@@ -282,7 +282,7 @@ class IntegrationTest {
 private fun TestApplicationEngine.login(username: String, password: String): Cookie? {
     var sessionCookie: Cookie?
 
-    handleRequest(HttpMethod.Post, "/com.example.login") {
+    handleRequest(HttpMethod.Post, "/login") {
         addHeader(HttpHeaders.ContentType, ContentType.Application.FormUrlEncoded.toString())
         setBody(listOf("username" to username, "password" to password).formUrlEncode())
     }.apply {

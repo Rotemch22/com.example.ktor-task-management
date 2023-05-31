@@ -75,13 +75,20 @@ class TasksService(private val tasksRepository: TasksRepository, private val use
     // returns true if
     //   task has no owner
     //   task's owner is the logged-in user
-    //   task's owner is managed by the current logged-in user who is a manger
     //   logged-in user is admin
+    //   task's owner is managed by the current logged-in user who is a manger
     private fun isTaskAuthorizedForUser(task: Task, username: String) : Boolean {
         val user = username.let { usersService.getUserByUserName(username) ?: throw Exceptions.NoUserFoundForLoggedInUserException(username) }
 
-        return task.owner == null || task.owner == user.userId.toString() || user.role == Role.ADMIN ||
-                (user.role == Role.MANAGER && usersService.getManagersToUsersMap().getOrDefault(user, emptyList())
-                    .any { it.userId.toString() == task.owner })
+        return when {
+            task.owner == null -> true
+            task.owner == user.userId.toString() -> true
+            user.role == Role.ADMIN -> true
+            user.role == Role.MANAGER -> {
+                val managedUsers = usersService.getManagersToUsersMap().getOrDefault(user, emptyList())
+                managedUsers.any { it.userId.toString() == task.owner }
+            }
+            else -> false
+        }
     }
 }
