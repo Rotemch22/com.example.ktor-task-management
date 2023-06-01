@@ -28,35 +28,18 @@ import org.koin.dsl.module
 import org.koin.java.KoinJavaComponent.getKoin
 import org.mindrot.jbcrypt.BCrypt
 import org.postgresql.ds.PGSimpleDataSource
-import kotlin.reflect.KClass
 
 @kotlinx.serialization.Serializable
 data class UserSession(val username: String) : Principal
 
 fun main() {
-    val dataSource = PGSimpleDataSource().apply {
-        user = "test"
-        password = "test"
-        databaseName = "tasks"
-        serverName = "localhost"
-        portNumber = 5432
-    }
-    val db = Database.connect(dataSource)
-
-    val appModule = module {
-        single { TasksRepository(db) }  // Inject the database dependency for the TasksRepository
-        single { UsersRepository(db) }  // Inject the database dependency for the UsersRepository
-        single { UsersService(get()) }  // Inject the UsersRepository dependency for the UsersService
-        single { TasksService(get(), get()) } // Inject the TasksRepository and UsersService dependencies for the TasksService
-    }
+    // Initialize the application components
+    val db = initializeDatabase()
+    // Create the database tables
+    createDatabaseTables(db)
 
     startKoin {
-        modules(appModule)
-    }
-
-    // Create the database tables
-    transaction(db) {
-        SchemaUtils.create(UsersRepository.UsersTable, TasksRepository.TasksTable)
+        modules(koinAppModule(db))
     }
 
     val usersService: UsersService = getKoin().get()
@@ -64,6 +47,37 @@ fun main() {
 
     usersService.initializeAdminUser()
 
+    // Start the application server
+    startServer(tasksService, usersService)
+}
+
+fun initializeDatabase(): Database {
+    // Load database configuration from the environment or a config file
+    val dataSource = PGSimpleDataSource().apply {
+        user = System.getenv("DB_USER") ?: "test"
+        password = System.getenv("DB_PASSWORD") ?: "test"
+        databaseName = System.getenv("DB_NAME") ?: "tasks"
+        serverName = System.getenv("DB_HOST") ?: "localhost"
+        portNumber = System.getenv("DB_PORT")?.toIntOrNull() ?: 5432
+    }
+
+    return Database.connect(dataSource)
+}
+
+fun koinAppModule(db: Database) = module {
+    single { TasksRepository(db) }
+    single { UsersRepository(db) }
+    single { UsersService(get()) }
+    single { TasksService(get(), get()) }
+}
+
+fun createDatabaseTables(db: Database) {
+    transaction(db) {
+        SchemaUtils.createMissingTablesAndColumns(UsersRepository.UsersTable, TasksRepository.TasksTable)
+    }
+}
+
+fun startServer(tasksService: TasksService, usersService: UsersService) {
     embeddedServer(Netty, port = 8080, host = "0.0.0.0") {
         module(tasksService, usersService)
     }.start(wait = true)
@@ -75,15 +89,13 @@ fun Application.module(tasksService: TasksService, usersService: UsersService) {
     }
 
     install(StatusPages) {
-        exception(exceptionHandler(HttpStatusCode.NotFound, Exceptions.TaskNotFoundException::class))
-        exception(exceptionHandler(HttpStatusCode.UnprocessableEntity, Exceptions.MismatchedTaskIdException::class))
-        exception(exceptionHandler(HttpStatusCode.BadRequest, Exceptions.TaskDueDatePastException::class))
-        exception(exceptionHandler(HttpStatusCode.BadRequest, Exceptions.InvalidTaskQueryValueException::class))
-        exception(exceptionHandler(HttpStatusCode.BadRequest, Exceptions.EndUserWithoutManager::class))
-        exception(exceptionHandler(HttpStatusCode.BadRequest, Exceptions.UserWithInvalidManagerId::class))
-        exception(exceptionHandler(HttpStatusCode.Unauthorized, Exceptions.NoLoggedInUserException::class))
-        exception(exceptionHandler(HttpStatusCode.Unauthorized, Exceptions.NoUserFoundForLoggedInUserException::class))
-        exception(exceptionHandler(HttpStatusCode.Unauthorized, Exceptions.TaskNotAuthorizedForUser::class))
+        exception<Throwable> { call, cause ->
+            call.respond(
+                Exceptions.statusMaap[cause::class]
+                    ?: HttpStatusCode.InternalServerError,
+                ErrorResponse(cause.message ?: "")
+            )
+        }
     }
 
     install(Sessions) {
@@ -170,18 +182,7 @@ fun buildLoginForm(): String {
     """.trimIndent()
 }
 
-fun <T : Exception> exceptionHandler(
-    status: HttpStatusCode,
-    exceptionType: KClass<T>
-): suspend (ApplicationCall, Throwable) -> Unit =
-    { call, cause ->
-        if (cause::class == exceptionType) {
-            call.respond(status, ErrorResponse(cause.message ?: ""))
-        }
-    }
-
 fun ApplicationCall.getLoggedInUsername(): String {
     val userSession: UserSession? = sessions.get()
-    return userSession?.username ?: throw Exceptions.NoLoggedInUserException ()
-
+    return userSession?.username ?: throw Exceptions.NoLoggedInUserException()
 }

@@ -3,6 +3,8 @@ package com.example.exceptions
 import com.example.models.Task
 import com.example.routes.UserInput
 import com.example.routes.UserResponse
+import io.ktor.http.*
+import kotlin.reflect.KClass
 
 class Exceptions {
 
@@ -17,5 +19,20 @@ class Exceptions {
     class NoUserFoundForLoggedInUserException (username : String): Exception("No user found for logged in username $username")
     class TaskNotAuthorizedForUser (task: Task, username: String): Exception("Task $task is not authorized for user $username")
 
-}@kotlinx.serialization.Serializable
+    companion object ExceptionStatusMap {
+        val statusMaap: Map<KClass<out Exception>, HttpStatusCode> = mapOf(
+            TaskNotFoundException::class to HttpStatusCode.NotFound,
+            MismatchedTaskIdException::class to HttpStatusCode.UnprocessableEntity,
+            TaskDueDatePastException::class to HttpStatusCode.BadRequest,
+            InvalidTaskQueryValueException::class to HttpStatusCode.BadRequest,
+            EndUserWithoutManager::class to HttpStatusCode.BadRequest,
+            UserWithInvalidManagerId::class to HttpStatusCode.BadRequest,
+            NoLoggedInUserException::class to HttpStatusCode.Unauthorized,
+            NoUserFoundForLoggedInUserException::class to HttpStatusCode.Unauthorized,
+            TaskNotAuthorizedForUser::class to HttpStatusCode.Unauthorized
+        )
+    }
+}
+
+@kotlinx.serialization.Serializable
 data class ErrorResponse(val error: String)

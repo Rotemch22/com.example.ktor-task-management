@@ -23,6 +23,19 @@ repositories {
     mavenCentral()
 }
 
+tasks {
+    // Configure the compileTestJava task
+    named<JavaCompile>("compileTestJava") {
+        sourceCompatibility = JavaVersion.toVersion("1.8").toString()
+        targetCompatibility = JavaVersion.toVersion("1.8").toString()
+    }
+
+    // Configure the compileTestKotlin task
+    named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileTestKotlin") {
+        kotlinOptions.jvmTarget = org.jetbrains.kotlin.config.JvmTarget.DEFAULT.description
+    }
+}
+
 dependencies {
     implementation("io.ktor:ktor-server-status-pages:$ktor_version")
     implementation("io.ktor:ktor-server-core-jvm:$ktor_version")
