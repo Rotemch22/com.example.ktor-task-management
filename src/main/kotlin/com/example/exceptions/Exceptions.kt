@@ -15,7 +15,7 @@ class Exceptions {
     class InvalidTaskQueryValueException(value: String, field: String): Exception("Invalid value $value for field $field")
     class EndUserWithoutManager(user : UserResponse): Exception("user $user does not have an assigned manager")
     class UserWithInvalidManagerId(userInput : UserInput): Exception("user $userInput with invalid manager id, no matching manager found for manager id: ${userInput.managerId}")
-    class NoLoggedInUserException (): Exception("No logged in user found")
+    class NoLoggedInUserException: Exception("No logged in user found")
     class NoUserFoundForLoggedInUserException (username : String): Exception("No user found for logged in username $username")
     class TaskNotAuthorizedForUser (task: Task, username: String): Exception("Task $task is not authorized for user $username")
 

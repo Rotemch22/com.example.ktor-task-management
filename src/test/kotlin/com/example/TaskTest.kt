@@ -14,7 +14,7 @@ class TaskTest {
             "This is a sample task",
             TaskStatus.NOT_STARTED,
             TaskSeverity.LOW,
-            "John Doe",
+            1,
             LocalDateTime.parse("2023-08-30T18:43:00")
         )
 
@@ -23,7 +23,7 @@ class TaskTest {
         assertEquals("This is a sample task", task.description)
         assertEquals(TaskStatus.NOT_STARTED, task.status)
         assertEquals(TaskSeverity.LOW, task.severity)
-        assertEquals("John Doe", task.owner)
+        assertEquals(1, task.owner)
         assertEquals(LocalDateTime.parse("2023-08-30T18:43:00"), task.dueDate)
     }
 
@@ -35,12 +35,12 @@ class TaskTest {
             "This is a sample task",
             TaskStatus.NOT_STARTED,
             TaskSeverity.LOW,
-            "John Doe",
+            1,
             LocalDateTime.parse("2023-08-30T18:43:00")
         )
 
         // Test toString() representation
-        val expectedToString = "Task(title=Sample Task, description=This is a sample task, status=NOT_STARTED, severity=LOW, owner=John Doe, dueDate=2023-08-30T18:43, taskId=0)"
+        val expectedToString = "Task(title=Sample Task, description=This is a sample task, status=NOT_STARTED, severity=LOW, owner=1, dueDate=2023-08-30T18:43, taskId=0)"
         assertEquals(expectedToString, task.toString())
     }
 }

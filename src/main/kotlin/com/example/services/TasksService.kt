@@ -3,6 +3,7 @@ package com.example.services
 import com.example.exceptions.Exceptions
 import com.example.models.Role
 import com.example.models.Task
+import com.example.models.TaskRevision
 import com.example.models.TasksQueryRequest
 import com.example.repository.TasksRepository
 import kotlinx.datetime.toJavaLocalDateTime
@@ -26,6 +27,9 @@ class TasksService(private val tasksRepository: TasksRepository, private val use
         } ?: throw Exceptions.TaskNotFoundException(id)
     }
 
+    fun getTaskHistory(id: Int) : List<TaskRevision>{
+        return tasksRepository.getTaskHistory(id)
+    }
 
     fun insertTask(loggedInUsername : String, task: Task): Int {
         if (!isTaskAuthorizedForUser(task, loggedInUsername)){
@@ -34,7 +38,7 @@ class TasksService(private val tasksRepository: TasksRepository, private val use
         // verify the due date is in the future before creating a task
         task.takeUnless { it.dueDate.toJavaLocalDateTime().isBefore(LocalDateTime.now()) }
             ?.let { validTask ->
-                val id = tasksRepository.insertTask(validTask)
+                val id = tasksRepository.insertTask(loggedInUsername, validTask)
                 logger.info { "Task $validTask created successfully" }
                 return id
             } ?: run {
@@ -56,7 +60,7 @@ class TasksService(private val tasksRepository: TasksRepository, private val use
                 throw Exceptions.TaskDueDatePastException(task)
             }
             else -> {
-                tasksRepository.updateTask(task)
+                tasksRepository.updateTask(loggedInUsername, task)
                 logger.info { "Task with id ${task.taskId} updated successfully: $currentTask -> $task" }
             }
         }
@@ -68,7 +72,7 @@ class TasksService(private val tasksRepository: TasksRepository, private val use
             throw Exceptions.TaskNotAuthorizedForUser(task, loggedInUsername)
         }
 
-        tasksRepository.deleteTask(id)
+        tasksRepository.deleteTask(loggedInUsername, id)
         logger.info { "task with id $id deleted successfully" }
     }
 
@@ -82,11 +86,11 @@ class TasksService(private val tasksRepository: TasksRepository, private val use
 
         return when {
             task.owner == null -> true
-            task.owner == user.userId.toString() -> true
+            task.owner == user.userId -> true
             user.role == Role.ADMIN -> true
             user.role == Role.MANAGER -> {
                 val managedUsers = usersService.getManagersToUsersMap().getOrDefault(user, emptyList())
-                managedUsers.any { it.userId.toString() == task.owner }
+                managedUsers.any { it.userId == task.owner }
             }
             else -> false
         }

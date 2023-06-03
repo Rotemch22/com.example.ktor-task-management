@@ -14,7 +14,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 const val TASKS_ROUTE = "/tasks"
-const val TASK_ID_ROUTE = "/tasks/{id}"
+const val TASK_ID_ROUTE = "$TASKS_ROUTE/{id}"
+const val TASK_HISTORY_ROUTE = "$TASK_ID_ROUTE/history"
 
 fun Route.taskRoutes(tasksService: TasksService) {
     get(TASKS_ROUTE) {
@@ -29,7 +30,7 @@ fun Route.taskRoutes(tasksService: TasksService) {
         val severity = severityParam?.let { parseEnumValue<TaskSeverity>(it, "severity") }
         val order = orderParam?.let { parseEnumValue<TaskSortOrder>(it, "order") }
 
-        call.respond(Json.encodeToString(tasksService.getTasks(loggedInUsername, TasksQueryRequest(status, severity, owner, order))))
+        call.respond(Json.encodeToString(tasksService.getTasks(loggedInUsername, TasksQueryRequest(status, severity, owner?.toInt(), order))))
     }
 
     get(TASK_ID_ROUTE) {
@@ -37,6 +38,12 @@ fun Route.taskRoutes(tasksService: TasksService) {
         val loggedInUsername = call.getLoggedInUsername()
 
         call.respond(tasksService.getAuthorizedTaskById(loggedInUsername, id))
+    }
+
+    get(TASK_HISTORY_ROUTE) {
+        val id = call.parameters.getOrFail<Int>("id")
+
+        call.respond(Json.encodeToString(tasksService.getTaskHistory(id)))
     }
 
     post(TASKS_ROUTE) {

@@ -73,7 +73,7 @@ fun koinAppModule(db: Database) = module {
 
 fun createDatabaseTables(db: Database) {
     transaction(db) {
-        SchemaUtils.createMissingTablesAndColumns(UsersRepository.UsersTable, TasksRepository.TasksTable)
+        SchemaUtils.createMissingTablesAndColumns(UsersRepository.UsersTable, TasksRepository.TasksTable, TasksRepository.TasksRevisionsTable)
     }
 }
 

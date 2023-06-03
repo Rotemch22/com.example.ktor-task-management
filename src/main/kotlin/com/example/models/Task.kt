@@ -21,7 +21,23 @@ data class Task(
     val description: String? = null,
     val status: TaskStatus,
     val severity: TaskSeverity,
-    val owner: String? = null,
+    val owner: Int? = null,
     val dueDate: LocalDateTime,
     val taskId: Int = 0
-) {}
+)
+
+@Serializable
+data class TaskRevision(
+    val task : Task,
+    val revision : Int,
+    val modifiedBy : String,
+    val modifiedDate: LocalDateTime,
+    val updateType: UpdateType
+)
+
+
+enum class UpdateType {
+    CREATE,
+    UPDATE,
+    DELETE
+}

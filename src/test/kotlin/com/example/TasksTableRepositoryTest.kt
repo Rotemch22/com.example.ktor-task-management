@@ -3,6 +3,7 @@ package com.example
 import com.example.models.Task
 import com.example.models.TaskSeverity
 import com.example.models.TaskStatus
+import com.example.models.UpdateType
 import com.example.repository.TasksRepository
 import kotlinx.datetime.LocalDateTime
 import org.jetbrains.exposed.sql.Database
@@ -29,27 +30,27 @@ class TasksTableRepositoryTest {
     private val tasksRepository = TasksRepository(db)
 
     private val task1 = Task("task1","task description1", TaskStatus.NOT_STARTED, TaskSeverity.HIGH, null, LocalDateTime.parse("2023-08-30T18:43:00"),1)
-    private val task2 = Task("task2","task description2", TaskStatus.IN_PROGRESS, TaskSeverity.URGENT, "some owner", LocalDateTime.parse("2024-01-01T00:00:00"), 2)
+    private val task2 = Task("task2","task description2", TaskStatus.IN_PROGRESS, TaskSeverity.URGENT, 1, LocalDateTime.parse("2024-01-01T00:00:00"), 2)
 
     @Before
     fun resetDB(){
         transaction (db) {
-            SchemaUtils.drop(TasksRepository.TasksTable)
-            SchemaUtils.createMissingTablesAndColumns(TasksRepository.TasksTable)
+            SchemaUtils.drop(TasksRepository.TasksTable, TasksRepository.TasksRevisionsTable)
+            SchemaUtils.createMissingTablesAndColumns(TasksRepository.TasksTable, TasksRepository.TasksRevisionsTable)
         }
     }
 
     @After
     fun cleanDB(){
         transaction (db) {
-            SchemaUtils.drop(TasksRepository.TasksTable)
+            SchemaUtils.drop(TasksRepository.TasksTable, TasksRepository.TasksRevisionsTable)
         }
     }
 
     @Test
     fun testInsertTask(){
         transaction (db) {
-            tasksRepository.insertTask(task1)
+            tasksRepository.insertTask("admin", task1)
         }
 
         val readItems = tasksRepository.getAllTasks()
@@ -60,11 +61,11 @@ class TasksTableRepositoryTest {
     @Test
     fun testUpdateTask(){
         transaction (db) {
-            tasksRepository.insertTask(task1)
-            tasksRepository.insertTask(task2)
+            tasksRepository.insertTask("admin", task1)
+            tasksRepository.insertTask("admin", task2)
         }
 
-        tasksRepository.updateTask(task1.copy(status = TaskStatus.COMPLETED))
+        tasksRepository.updateTask("admin", task1.copy(status = TaskStatus.COMPLETED))
         val updatedTask = tasksRepository.getTaskById(task1.taskId)
         assertEquals(task1.copy(status = TaskStatus.COMPLETED), updatedTask)
     }
@@ -72,11 +73,11 @@ class TasksTableRepositoryTest {
     @Test
     fun testDeleteTask(){
         transaction (db) {
-            tasksRepository.insertTask(task1)
-            tasksRepository.insertTask(task2)
+            tasksRepository.insertTask("admin", task1)
+            tasksRepository.insertTask("admin", task2)
         }
 
-        tasksRepository.deleteTask(task1.taskId)
+        tasksRepository.deleteTask("admin", task1.taskId)
         val deletedTask = tasksRepository.getTaskById(task1.taskId)
         assertNull(deletedTask)
 
@@ -88,8 +89,8 @@ class TasksTableRepositoryTest {
     @Test
     fun testGetAllTasks(){
         transaction (db) {
-            tasksRepository.insertTask(task1)
-            tasksRepository.insertTask(task2)
+            tasksRepository.insertTask("admin", task1)
+            tasksRepository.insertTask("admin", task2)
         }
 
         val readItems = tasksRepository.getAllTasks()
@@ -101,8 +102,8 @@ class TasksTableRepositoryTest {
     @Test
     fun testGetTaskById(){
         transaction (db) {
-            tasksRepository.insertTask(task1)
-            tasksRepository.insertTask(task2)
+            tasksRepository.insertTask("admin", task1)
+            tasksRepository.insertTask("admin", task2)
         }
 
         val task = tasksRepository.getTaskById(2)
@@ -112,5 +113,24 @@ class TasksTableRepositoryTest {
         assertNull(noneExistingTask)
     }
 
+    @Test
+    fun testGetTaskHistory(){
+        transaction (db) {
+            tasksRepository.insertTask("admin", task1)
+            tasksRepository.updateTask("admin", task1.copy(status = TaskStatus.IN_PROGRESS))
+            tasksRepository.updateTask("admin", task1.copy(status = TaskStatus.COMPLETED))
+            tasksRepository.deleteTask("admin", task1.taskId)
+        }
+
+        val taskHistory = tasksRepository.getTaskHistory(task1.taskId)
+        assertEquals(4, taskHistory.size)
+        assertEquals(UpdateType.CREATE, taskHistory[0].updateType)
+        assertEquals(TaskStatus.NOT_STARTED, taskHistory[0].task.status)
+        assertEquals(UpdateType.UPDATE, taskHistory[1].updateType)
+        assertEquals(TaskStatus.IN_PROGRESS, taskHistory[1].task.status)
+        assertEquals(UpdateType.UPDATE, taskHistory[2].updateType)
+        assertEquals(TaskStatus.COMPLETED, taskHistory[2].task.status)
+        assertEquals(UpdateType.DELETE, taskHistory[3].updateType)
+    }
 }
 

@@ -4,7 +4,7 @@ package com.example.models
 data class TasksQueryRequest(
     val status: TaskStatus? = null,
     val severity: TaskSeverity? = null,
-    val owner: String? = null,
+    val owner: Int? = null,
     val order: TaskSortOrder? = null
 )
 

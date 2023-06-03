@@ -9,12 +9,13 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.`java-time`.datetime
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.time.LocalDateTime
 
 private val logger = KotlinLogging.logger {}
 
 class TasksRepository (private val db: Database) {
 
-    fun insertTask(task: Task): Int {
+    fun insertTask(loggedInUsername : String, task: Task): Int {
         val id = transaction(db) {
             TasksTable.insertAndGetId {
                 it[title] = task.title
@@ -27,10 +28,31 @@ class TasksRepository (private val db: Database) {
         }
 
         logger.info { "task $task successfully created in db with id ${id.value}" }
+
+        insertTaskCreationRevision(loggedInUsername, task.copy(taskId = id.value))
         return id.value
     }
 
-    fun updateTask(task: Task) {
+    private fun insertTaskCreationRevision(loggedInUsername : String, task: Task) {
+        transaction(db) {
+            TasksRevisionsTable.insert {
+                it[taskId] = task.taskId
+                it[revision] = 0
+                it[title] = task.title
+                it[description] = task.description
+                it[status] = task.status
+                it[severity] = task.severity
+                it[owner] = task.owner
+                it[dueDate] = task.dueDate.toJavaLocalDateTime()
+                it[modifiedBy] = loggedInUsername
+                it[modifiedDate] = LocalDateTime.now()
+                it[updateType] = UpdateType.CREATE
+
+            }
+        }
+    }
+
+    fun updateTask(loggedInUsername : String, task: Task) {
         transaction(db) {
             val rowsUpdated = TasksTable.update({ TasksTable.id eq task.taskId })
             {
@@ -50,7 +72,35 @@ class TasksRepository (private val db: Database) {
             }
 
             logger.info { "task $task successfully updated in db" }
+            insertTaskUpdateRevision(loggedInUsername, task)
         }
+    }
+
+    private fun insertTaskUpdateRevision(loggedInUsername : String, task: Task) {
+        transaction(db) {
+            val maxRevision = getMaxRevision(task)
+
+            TasksRevisionsTable.insert {
+                it[taskId] = task.taskId
+                it[revision] = maxRevision + 1
+                it[title] = task.title
+                it[description] = task.description
+                it[status] = task.status
+                it[severity] = task.severity
+                it[owner] = task.owner
+                it[dueDate] = task.dueDate.toJavaLocalDateTime()
+                it[modifiedBy] = loggedInUsername
+                it[modifiedDate] = LocalDateTime.now()
+                it[updateType] = UpdateType.UPDATE
+            }
+        }
+    }
+
+    private fun getMaxRevision(task: Task): Int {
+        return TasksRevisionsTable
+            .slice(TasksRevisionsTable.revision)
+            .select { TasksRevisionsTable.taskId eq task.taskId }
+            .maxOfOrNull { it[TasksRevisionsTable.revision] } ?: 0
     }
 
     fun getAllTasks(): List<Task> {
@@ -84,6 +134,13 @@ class TasksRepository (private val db: Database) {
     }
 
 
+    fun getTaskHistory(taskId: Int) : List<TaskRevision>{
+        return transaction(db) {
+            TasksRevisionsTable.select(TasksRevisionsTable.taskId eq taskId)
+                .orderBy(TasksRevisionsTable.revision).map { TasksRevisionsTable.toTaskRevision(it) }
+        }
+    }
+
     fun getTaskById(id: Int): Task? {
         return transaction(db) {
             TasksTable.select(TasksTable.id eq id).map {
@@ -92,28 +149,71 @@ class TasksRepository (private val db: Database) {
         }
     }
 
-    fun deleteTask(id: Int) {
+    fun deleteTask(loggedInUsername : String, id: Int) {
         transaction(db) {
-            val rowsUpdated = TasksTable.deleteWhere { TasksTable.id eq id }
+            val task = TasksTable.select(TasksTable.id eq id).map {
+                TasksTable.toTask(it)
+            }.firstOrNull()
 
             // if no rows were updated then the task with given id does not exist
-            if (rowsUpdated == 0) {
+            if (task == null) {
                 val errorMsg = "No task with id $id exists in the db"
                 logger.error { errorMsg }
                 throw IllegalArgumentException(errorMsg)
             }
 
+            TasksTable.deleteWhere { TasksTable.id eq id }
             logger.info { "task with id $id successfully deleted from the db" }
+            insertTaskDeletionRevision(loggedInUsername, task)
         }
     }
+
+    private fun insertTaskDeletionRevision(loggedInUsername : String, task: Task) {
+        transaction(db) {
+            val maxRevision = getMaxRevision(task)
+
+            TasksRevisionsTable.insert {
+                it[taskId] = task.taskId
+                it[revision] = maxRevision + 1
+                it[title] = task.title
+                it[description] = task.description
+                it[status] = task.status
+                it[severity] = task.severity
+                it[owner] = task.owner
+                it[dueDate] = task.dueDate.toJavaLocalDateTime()
+                it[modifiedBy] = loggedInUsername
+                it[modifiedDate] = LocalDateTime.now()
+                it[updateType] = UpdateType.DELETE
+
+            }
+        }
+    }
+
 
     object TasksTable : IntIdTable() {
         val title = varchar("title", 100)
         val description = varchar("description", 1000).nullable()
         val status = enumeration("task_status", TaskStatus::class)
         val severity = enumeration("task_severity", TaskSeverity::class)
-        val owner = varchar("owner", 100).nullable()
+        val owner = integer("owner").nullable()
         val dueDate = datetime("dueDate")
+    }
+
+    object TasksRevisionsTable : Table() {
+        val taskId = integer("task_id")
+        val revision = integer("revision")
+        val title = varchar("title", 100)
+        val description = varchar("description", 1000).nullable()
+        val status = enumeration("task_status", TaskStatus::class)
+        val severity = enumeration("task_severity", TaskSeverity::class)
+        val owner = integer("owner").nullable()
+        val dueDate = datetime("dueDate")
+        val modifiedBy = varchar("modified_by", 100)
+        val modifiedDate = datetime("modified_date")
+        val updateType = enumeration("update_type", UpdateType::class)
+        init {
+            uniqueIndex(taskId, revision)
+        }
     }
 
     private fun TasksTable.toTask(it: ResultRow): Task {
@@ -125,5 +225,23 @@ class TasksRepository (private val db: Database) {
         val dueDate = it[dueDate].toKotlinLocalDateTime()
         val taskId = it[id].value
         return Task(title, description, status, severity, owner, dueDate, taskId)
+    }
+
+
+    private fun TasksRevisionsTable.toTaskRevision(it: ResultRow): TaskRevision {
+        val title = it[title]
+        val description = it[description]
+        val status = it[status]
+        val severity = it[severity]
+        val owner = it[owner]
+        val dueDate = it[dueDate].toKotlinLocalDateTime()
+        val taskId = it[taskId]
+        val revision = it[revision]
+        val modifiedBy = it[modifiedBy]
+        val modifiedDate = it[modifiedDate].toKotlinLocalDateTime()
+        val updateType = it[updateType]
+        return TaskRevision(
+            Task(title, description, status, severity, owner, dueDate, taskId),
+            revision, modifiedBy, modifiedDate, updateType)
     }
 }
