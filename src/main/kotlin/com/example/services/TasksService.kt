@@ -32,45 +32,39 @@ class TasksService(private val tasksRepository: TasksRepository, private val use
     }
 
     fun insertTask(loggedInUsername : String, task: Task): Int {
-        if (!isTaskAuthorizedForUser(task, loggedInUsername)){
-            throw Exceptions.TaskNotAuthorizedForUser(task, loggedInUsername)
-        }
-        // verify the due date is in the future before creating a task
-        task.takeUnless { it.dueDate.toJavaLocalDateTime().isBefore(LocalDateTime.now()) }
-            ?.let { validTask ->
-                val id = tasksRepository.insertTask(loggedInUsername, validTask)
-                logger.info { "Task $validTask created successfully" }
+        task
+            .isAuthorizedForUser(loggedInUsername)
+            .isDueDateInFuture()
+            .validateTitleLength(100)
+            .validateDescriptionLength(500)
+            .also {
+                val id = tasksRepository.insertTask(loggedInUsername, task)
+                logger.info { "Task $task created successfully" }
                 return id
-            } ?: run {
-            logger.error { "Task $task can't be created with due date ${task.dueDate} in the past" }
-            throw Exceptions.TaskDueDatePastException(task)
-        }
+            }
     }
 
     fun updateTask(loggedInUsername : String, id: Int, task: Task) {
-        // verify the URL id matches the task id in the body, if so verify a task with such id exist and the new dueDate is in the future
         val currentTask = getAuthorizedTaskById(loggedInUsername, id)
-        when {
-            id != task.taskId -> {
-                logger.error { "The task ID in the URL $id does not match the taskId in the request body ${task.taskId}" }
-                throw Exceptions.MismatchedTaskIdException(id, task.taskId)
-            }
-            task.dueDate.toJavaLocalDateTime().isBefore(LocalDateTime.now()) -> {
-                logger.error { "Task $task can't be updated with due date ${task.dueDate} in the past" }
-                throw Exceptions.TaskDueDatePastException(task)
-            }
-            else -> {
-                tasksRepository.updateTask(loggedInUsername, task)
+        task
+            .isIdMatchUrl(id)
+            .isAuthorizedForUser(loggedInUsername) // Check if the user is authorized for the updated task
+            .isDueDateInFuture()
+            .validateTitleLength(100)
+            .validateDescriptionLength(1000)
+            .also { taskToUpdate ->
+                // Check if the user is authorized for the previous owner of the task
+                if (currentTask.owner != taskToUpdate.owner) {
+                    currentTask.isAuthorizedForUser(loggedInUsername)
+                }
+                tasksRepository.updateTask(loggedInUsername, taskToUpdate)
                 logger.info { "Task with id ${task.taskId} updated successfully: $currentTask -> $task" }
             }
-        }
     }
 
     fun deleteTask(loggedInUsername : String, id: Int) {
         val task = getAuthorizedTaskById(loggedInUsername, id)
-        if (!isTaskAuthorizedForUser(task, loggedInUsername)){
-            throw Exceptions.TaskNotAuthorizedForUser(task, loggedInUsername)
-        }
+        task.isAuthorizedForUser(loggedInUsername)
 
         tasksRepository.deleteTask(loggedInUsername, id)
         logger.info { "task with id $id deleted successfully" }
@@ -94,5 +88,39 @@ class TasksService(private val tasksRepository: TasksRepository, private val use
             }
             else -> false
         }
+    }
+
+    private fun Task.isAuthorizedForUser(username: String): Task {
+        if (!isTaskAuthorizedForUser(this, username)) {
+            throw Exceptions.TaskNotAuthorizedForUser(this, username)
+        }
+        return this
+    }
+
+    private fun Task.isDueDateInFuture(): Task {
+        if (this.dueDate.toJavaLocalDateTime().isBefore(LocalDateTime.now())) {
+            throw Exceptions.TaskDueDatePastException(this)
+        }
+        return this
+    }
+
+    private fun Task.isIdMatchUrl(id: Int): Task {
+        if (id != this.taskId) {
+            throw Exceptions.MismatchedTaskIdException(id, this.taskId)
+        }
+        return this
+    }
+
+    private fun Task.validateTitleLength(maxLength: Int): Task {
+        require(title.isNotBlank()) { "Task title must not be empty" }
+        require(title.length <= maxLength) { "Task title exceeds the maximum length of $maxLength characters" }
+        return this
+    }
+
+    private fun Task.validateDescriptionLength(maxLength: Int): Task {
+        if (description != null) {
+            require(description.length <= maxLength) { "Task description exceeds the maximum length of $maxLength characters" }
+        }
+        return this
     }
 }

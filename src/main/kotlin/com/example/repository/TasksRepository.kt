@@ -1,5 +1,6 @@
 package com.example.repository
 
+import com.example.exceptions.Exceptions
 import com.example.models.*
 import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toKotlinLocalDateTime
@@ -49,7 +50,7 @@ class TasksRepository (private val db: Database) {
             if (rowsUpdated == 0) {
                 val errorMsg = "No task with id ${task.taskId} exists in the db"
                 logger.error { errorMsg }
-                throw IllegalArgumentException(errorMsg)
+                throw Exceptions.TaskNotFoundException(task.taskId)
             }
 
             logger.info { "task $task successfully updated in db" }
@@ -113,7 +114,7 @@ class TasksRepository (private val db: Database) {
             if (task == null) {
                 val errorMsg = "No task with id $id exists in the db"
                 logger.error { errorMsg }
-                throw IllegalArgumentException(errorMsg)
+                throw Exceptions.TaskNotFoundException(id)
             }
 
             TasksTable.deleteWhere { TasksTable.id eq id }
@@ -142,7 +143,6 @@ class TasksRepository (private val db: Database) {
                 it[modifiedBy] = loggedInUsername
                 it[modifiedDate] = LocalDateTime.now()
                 it[updateType] = update
-
             }
 
             logger.info { "task revision ${maxRevision + 1} successfully inserted for task $task with update type $update" }
