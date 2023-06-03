@@ -147,14 +147,13 @@ fun Application.module(tasksService: TasksService, usersService: UsersService) {
                     val apiList = listOf(
                         "GET /tasks",
                         "GET /tasks/{id}",
+                        "GET /tasks/{id}/history",
                         "POST /tasks",
                         "PUT /tasks/{id}",
                         "DELETE /tasks/{id}",
                         "GET /users",
                         "GET /users/{id}",
-                        "POST /users",
-                        "PUT /users/{id}",
-                        "DELETE /users/{id}"
+                        "POST /users"
                     )
                     call.respondText(apiList.joinToString("\n"), ContentType.Text.Plain)
                 }

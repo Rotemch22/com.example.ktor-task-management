@@ -29,27 +29,8 @@ class TasksRepository (private val db: Database) {
 
         logger.info { "task $task successfully created in db with id ${id.value}" }
 
-        insertTaskCreationRevision(loggedInUsername, task.copy(taskId = id.value))
+        addTaskRevision(loggedInUsername, task.copy(taskId = id.value), UpdateType.CREATE)
         return id.value
-    }
-
-    private fun insertTaskCreationRevision(loggedInUsername : String, task: Task) {
-        transaction(db) {
-            TasksRevisionsTable.insert {
-                it[taskId] = task.taskId
-                it[revision] = 0
-                it[title] = task.title
-                it[description] = task.description
-                it[status] = task.status
-                it[severity] = task.severity
-                it[owner] = task.owner
-                it[dueDate] = task.dueDate.toJavaLocalDateTime()
-                it[modifiedBy] = loggedInUsername
-                it[modifiedDate] = LocalDateTime.now()
-                it[updateType] = UpdateType.CREATE
-
-            }
-        }
     }
 
     fun updateTask(loggedInUsername : String, task: Task) {
@@ -72,35 +53,8 @@ class TasksRepository (private val db: Database) {
             }
 
             logger.info { "task $task successfully updated in db" }
-            insertTaskUpdateRevision(loggedInUsername, task)
+            addTaskRevision(loggedInUsername, task, UpdateType.UPDATE)
         }
-    }
-
-    private fun insertTaskUpdateRevision(loggedInUsername : String, task: Task) {
-        transaction(db) {
-            val maxRevision = getMaxRevision(task)
-
-            TasksRevisionsTable.insert {
-                it[taskId] = task.taskId
-                it[revision] = maxRevision + 1
-                it[title] = task.title
-                it[description] = task.description
-                it[status] = task.status
-                it[severity] = task.severity
-                it[owner] = task.owner
-                it[dueDate] = task.dueDate.toJavaLocalDateTime()
-                it[modifiedBy] = loggedInUsername
-                it[modifiedDate] = LocalDateTime.now()
-                it[updateType] = UpdateType.UPDATE
-            }
-        }
-    }
-
-    private fun getMaxRevision(task: Task): Int {
-        return TasksRevisionsTable
-            .slice(TasksRevisionsTable.revision)
-            .select { TasksRevisionsTable.taskId eq task.taskId }
-            .maxOfOrNull { it[TasksRevisionsTable.revision] } ?: 0
     }
 
     fun getAllTasks(): List<Task> {
@@ -164,13 +118,17 @@ class TasksRepository (private val db: Database) {
 
             TasksTable.deleteWhere { TasksTable.id eq id }
             logger.info { "task with id $id successfully deleted from the db" }
-            insertTaskDeletionRevision(loggedInUsername, task)
+            addTaskRevision(loggedInUsername, task, UpdateType.DELETE)
         }
     }
 
-    private fun insertTaskDeletionRevision(loggedInUsername : String, task: Task) {
+
+    private fun addTaskRevision(loggedInUsername : String, task: Task, update: UpdateType) {
         transaction(db) {
-            val maxRevision = getMaxRevision(task)
+            val maxRevision = TasksRevisionsTable
+                .slice(TasksRevisionsTable.revision)
+                .select { TasksRevisionsTable.taskId eq task.taskId }
+                .maxOfOrNull { it[TasksRevisionsTable.revision] } ?: 0
 
             TasksRevisionsTable.insert {
                 it[taskId] = task.taskId
@@ -183,9 +141,11 @@ class TasksRepository (private val db: Database) {
                 it[dueDate] = task.dueDate.toJavaLocalDateTime()
                 it[modifiedBy] = loggedInUsername
                 it[modifiedDate] = LocalDateTime.now()
-                it[updateType] = UpdateType.DELETE
+                it[updateType] = update
 
             }
+
+            logger.info { "task revision ${maxRevision + 1} successfully inserted for task $task with update type $update" }
         }
     }
 
