@@ -3,8 +3,8 @@ package com.example
 import com.example.exceptions.Exceptions
 import com.example.models.*
 import com.example.repository.TasksRepository
-import com.example.services.TasksService
-import com.example.services.UsersService
+import com.example.services.TasksServiceImpl
+import com.example.services.UsersServiceImpl
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.datetime.toKotlinLocalDateTime
@@ -12,17 +12,20 @@ import org.junit.Test
 import kotlin.test.assertFailsWith
 
 class TasksServiceTest {
+
+    private val user = User("admin", "admin", "admin@email.com", Role.ADMIN, null)
+
     private val tasksRepository = mockk<TasksRepository>()
-    private val usersService = mockk<UsersService>()
-    private val taskService = TasksService(tasksRepository, usersService)
+    private val usersService = mockk<UsersServiceImpl>()
+    private val taskService = TasksServiceImpl(tasksRepository, usersService)
 
 
     @Test
     fun `test insert task with past due date`() {
-        every { usersService.getUserByUserName("admin") } returns User("admin", "admin", "admin@email.com", Role.ADMIN, null)
+        every { usersService.getUserByUserName("admin") } returns user
         assertFailsWith(Exceptions.TaskDueDatePastException::class) {
             taskService.insertTask(
-                "admin",
+                RequestContext(user),
                 Task(
                     "title",
                     "description",
@@ -50,7 +53,7 @@ class TasksServiceTest {
         every {tasksRepository.getTaskById(1)} returns task
         assertFailsWith(Exceptions.TaskDueDatePastException::class) {
             taskService.updateTask(
-                "admin",
+                RequestContext(user),
                 1,
                 task.copy(dueDate = java.time.LocalDateTime.now().minusDays(1).toKotlinLocalDateTime())
             )
@@ -72,7 +75,7 @@ class TasksServiceTest {
         every {tasksRepository.getTaskById(1)} returns task
         assertFailsWith(Exceptions.MismatchedTaskIdException::class) {
             taskService.updateTask(
-                "admin",
+                RequestContext(user),
                 1,
                 task.copy(title = "newTitle", taskId =  2)
             )
@@ -94,7 +97,7 @@ class TasksServiceTest {
         every {tasksRepository.getTaskById(1)} returns null
         assertFailsWith(Exceptions.TaskNotFoundException::class) {
             taskService.updateTask(
-                "admin",
+                RequestContext(user),
                 1,
                 task.copy(title = "newTitle")
             )
@@ -107,7 +110,7 @@ class TasksServiceTest {
         every {tasksRepository.getTaskById(1)} returns null
 
         assertFailsWith(Exceptions.TaskNotFoundException::class) {
-            taskService.deleteTask("admin", 1)
+            taskService.deleteTask(RequestContext(user), 1)
         }
     }
 }

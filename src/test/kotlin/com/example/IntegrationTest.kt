@@ -1,12 +1,14 @@
 package com.example
 
+import TasksService
+import UsersService
 import com.example.models.*
 import com.example.repository.TasksRepository
 import com.example.repository.UsersRepository
 import com.example.routes.UserInput
 import com.example.routes.UserResponse
-import com.example.services.TasksService
-import com.example.services.UsersService
+import com.example.services.TasksServiceImpl
+import com.example.services.UsersServiceImpl
 import io.ktor.http.*
 import io.ktor.server.testing.*
 import kotlinx.datetime.toKotlinLocalDateTime
@@ -38,8 +40,8 @@ class IntegrationTest {
     private val appModule = module {
         single { TasksRepository(db) }
         single { UsersRepository(db) }
-        single { UsersService(get()) }
-        single { TasksService(get(), get()) }
+        single<UsersService> { UsersServiceImpl(get()) }
+        single<TasksService> { TasksServiceImpl(get(), get()) }
     }
 
     private var client: TestApplicationEngine? = null

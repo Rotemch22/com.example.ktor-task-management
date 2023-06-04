@@ -1,13 +1,16 @@
 package com.example
 
+import TasksService
+import UsersService
 import com.example.exceptions.ErrorResponse
 import com.example.exceptions.Exceptions
+import com.example.models.User
 import com.example.repository.TasksRepository
 import com.example.repository.UsersRepository
 import com.example.routes.taskRoutes
 import com.example.routes.userRoutes
-import com.example.services.TasksService
-import com.example.services.UsersService
+import com.example.services.TasksServiceImpl
+import com.example.services.UsersServiceImpl
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
@@ -31,6 +34,7 @@ import org.postgresql.ds.PGSimpleDataSource
 
 @kotlinx.serialization.Serializable
 data class UserSession(val username: String) : Principal
+data class RequestContext(val user : User)
 
 fun main() {
     // Initialize the application components
@@ -42,8 +46,8 @@ fun main() {
         modules(koinAppModule(db))
     }
 
-    val usersService: UsersService = getKoin().get()
-    val tasksService: TasksService = getKoin().get()
+    val usersService: UsersServiceImpl = getKoin().get()
+    val tasksService: TasksServiceImpl = getKoin().get()
 
     usersService.initializeAdminUser()
 
@@ -67,8 +71,8 @@ fun initializeDatabase(): Database {
 fun koinAppModule(db: Database) = module {
     single { TasksRepository(db) }
     single { UsersRepository(db) }
-    single { UsersService(get()) }
-    single { TasksService(get(), get()) }
+    single<UsersService> { UsersServiceImpl(get()) }
+    single<TasksService> { TasksServiceImpl(get(), get()) }
 }
 
 fun createDatabaseTables(db: Database) {
@@ -158,7 +162,7 @@ fun Application.module(tasksService: TasksService, usersService: UsersService) {
                     call.respondText(apiList.joinToString("\n"), ContentType.Text.Plain)
                 }
             }
-            taskRoutes(tasksService)
+            taskRoutes(tasksService, usersService)
             userRoutes(usersService)
         }
     }

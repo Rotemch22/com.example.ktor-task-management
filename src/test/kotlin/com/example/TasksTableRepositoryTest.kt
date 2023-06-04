@@ -1,9 +1,6 @@
 package com.example
 
-import com.example.models.Task
-import com.example.models.TaskSeverity
-import com.example.models.TaskStatus
-import com.example.models.UpdateType
+import com.example.models.*
 import com.example.repository.TasksRepository
 import kotlinx.datetime.LocalDateTime
 import org.jetbrains.exposed.sql.Database
@@ -31,6 +28,7 @@ class TasksTableRepositoryTest {
 
     private val task1 = Task("task1","task description1", TaskStatus.NOT_STARTED, TaskSeverity.HIGH, null, LocalDateTime.parse("2023-08-30T18:43:00"),1)
     private val task2 = Task("task2","task description2", TaskStatus.IN_PROGRESS, TaskSeverity.URGENT, 1, LocalDateTime.parse("2024-01-01T00:00:00"), 2)
+    val user = User("admin", "admin", "admin@email.com", Role.ADMIN, null)
 
     @Before
     fun resetDB(){
@@ -50,7 +48,7 @@ class TasksTableRepositoryTest {
     @Test
     fun testInsertTask(){
         transaction (db) {
-            tasksRepository.insertTask("admin", task1)
+            tasksRepository.insertTask(RequestContext(user), task1)
         }
 
         val readItems = tasksRepository.getAllTasks()
@@ -61,11 +59,11 @@ class TasksTableRepositoryTest {
     @Test
     fun testUpdateTask(){
         transaction (db) {
-            tasksRepository.insertTask("admin", task1)
-            tasksRepository.insertTask("admin", task2)
+            tasksRepository.insertTask(RequestContext(user), task1)
+            tasksRepository.insertTask(RequestContext(user), task2)
         }
 
-        tasksRepository.updateTask("admin", task1.copy(status = TaskStatus.COMPLETED))
+        tasksRepository.updateTask(RequestContext(user), task1.copy(status = TaskStatus.COMPLETED))
         val updatedTask = tasksRepository.getTaskById(task1.taskId)
         assertEquals(task1.copy(status = TaskStatus.COMPLETED), updatedTask)
     }
@@ -73,11 +71,11 @@ class TasksTableRepositoryTest {
     @Test
     fun testDeleteTask(){
         transaction (db) {
-            tasksRepository.insertTask("admin", task1)
-            tasksRepository.insertTask("admin", task2)
+            tasksRepository.insertTask(RequestContext(user), task1)
+            tasksRepository.insertTask(RequestContext(user), task2)
         }
 
-        tasksRepository.deleteTask("admin", task1.taskId)
+        tasksRepository.deleteTask(RequestContext(user), task1.taskId)
         val deletedTask = tasksRepository.getTaskById(task1.taskId)
         assertNull(deletedTask)
 
@@ -89,8 +87,8 @@ class TasksTableRepositoryTest {
     @Test
     fun testGetAllTasks(){
         transaction (db) {
-            tasksRepository.insertTask("admin", task1)
-            tasksRepository.insertTask("admin", task2)
+            tasksRepository.insertTask(RequestContext(user), task1)
+            tasksRepository.insertTask(RequestContext(user), task2)
         }
 
         val readItems = tasksRepository.getAllTasks()
@@ -102,8 +100,8 @@ class TasksTableRepositoryTest {
     @Test
     fun testGetTaskById(){
         transaction (db) {
-            tasksRepository.insertTask("admin", task1)
-            tasksRepository.insertTask("admin", task2)
+            tasksRepository.insertTask(RequestContext(user), task1)
+            tasksRepository.insertTask(RequestContext(user), task2)
         }
 
         val task = tasksRepository.getTaskById(2)
@@ -116,10 +114,10 @@ class TasksTableRepositoryTest {
     @Test
     fun testGetTaskHistory(){
         transaction (db) {
-            tasksRepository.insertTask("admin", task1)
-            tasksRepository.updateTask("admin", task1.copy(status = TaskStatus.IN_PROGRESS))
-            tasksRepository.updateTask("admin", task1.copy(status = TaskStatus.COMPLETED))
-            tasksRepository.deleteTask("admin", task1.taskId)
+            tasksRepository.insertTask(RequestContext(user), task1)
+            tasksRepository.updateTask(RequestContext(user), task1.copy(status = TaskStatus.IN_PROGRESS))
+            tasksRepository.updateTask(RequestContext(user), task1.copy(status = TaskStatus.COMPLETED))
+            tasksRepository.deleteTask(RequestContext(user), task1.taskId)
         }
 
         val taskHistory = tasksRepository.getTaskHistory(task1.taskId)

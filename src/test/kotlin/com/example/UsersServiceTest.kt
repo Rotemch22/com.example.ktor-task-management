@@ -4,7 +4,7 @@ import com.example.exceptions.Exceptions
 import com.example.models.Role
 import com.example.models.User
 import com.example.repository.UsersRepository
-import com.example.services.UsersService
+import com.example.services.UsersServiceImpl
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Test
@@ -14,7 +14,7 @@ import kotlin.test.assertFailsWith
 class UsersServiceTest {
 
     private val usersRepository = mockk<UsersRepository>()
-    private val usersService = UsersService(usersRepository)
+    private val usersService = UsersServiceImpl(usersRepository)
 
     @Test
     fun testInsertManagerAndUser(){

@@ -1,5 +1,6 @@
 package com.example.services
 
+import UsersService
 import com.example.exceptions.Exceptions
 import com.example.models.Role
 import com.example.models.User
@@ -9,9 +10,9 @@ import mu.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
 
-class UsersService(private val usersRepository: UsersRepository) {
+class UsersServiceImpl(private val usersRepository: UsersRepository) : UsersService{
 
-    fun insertUser(user : User) : Int{
+    override fun insertUser(user : User) : Int{
         if (user.role == Role.END_USER && (user.manager == null || user.manager.role != Role.MANAGER)){
             logger.error { "user $user can't be add with role USER and without a manager" }
             throw Exceptions.EndUserWithoutManager(user.toUserResponse())
@@ -22,23 +23,23 @@ class UsersService(private val usersRepository: UsersRepository) {
         return id
     }
 
-    fun getAllUsers(): List<User> {
+    override fun getAllUsers(): List<User> {
         return usersRepository.getAllUsers()
     }
 
-    fun getUserById(userId : Int?): User? {
+    override fun getUserById(userId : Int?): User? {
         return usersRepository.getUserById(userId)
     }
 
-    fun getUserByUserName(username: String): User? {
+    override fun getUserByUserName(username: String): User? {
         return usersRepository.getUserByUserName(username)
     }
 
-    fun getManagersToUsersMap() : Map<User, List<User>> {
+    override fun getManagersToUsersMap() : Map<User, List<User>> {
         return usersRepository.getManagersToUsersMap()
     }
 
-    fun initializeAdminUser() {
+    override fun initializeAdminUser() {
         usersRepository.initializeAdminUser()
     }
 

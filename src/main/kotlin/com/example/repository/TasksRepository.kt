@@ -1,5 +1,6 @@
 package com.example.repository
 
+import com.example.RequestContext
 import com.example.exceptions.Exceptions
 import com.example.models.*
 import kotlinx.datetime.toJavaLocalDateTime
@@ -16,7 +17,7 @@ private val logger = KotlinLogging.logger {}
 
 class TasksRepository (private val db: Database) {
 
-    fun insertTask(loggedInUsername : String, task: Task): Int {
+    fun insertTask(requestContext: RequestContext, task: Task): Int {
         val id = transaction(db) {
             TasksTable.insertAndGetId {
                 it[title] = task.title
@@ -30,11 +31,11 @@ class TasksRepository (private val db: Database) {
 
         logger.info { "task $task successfully created in db with id ${id.value}" }
 
-        addTaskRevision(loggedInUsername, task.copy(taskId = id.value), UpdateType.CREATE)
+        addTaskRevision(requestContext.user.username, task.copy(taskId = id.value), UpdateType.CREATE)
         return id.value
     }
 
-    fun updateTask(loggedInUsername : String, task: Task) {
+    fun updateTask(requestContext: RequestContext, task: Task) {
         transaction(db) {
             val rowsUpdated = TasksTable.update({ TasksTable.id eq task.taskId })
             {
@@ -54,7 +55,7 @@ class TasksRepository (private val db: Database) {
             }
 
             logger.info { "task $task successfully updated in db" }
-            addTaskRevision(loggedInUsername, task, UpdateType.UPDATE)
+            addTaskRevision(requestContext.user.username, task, UpdateType.UPDATE)
         }
     }
 
@@ -104,7 +105,7 @@ class TasksRepository (private val db: Database) {
         }
     }
 
-    fun deleteTask(loggedInUsername : String, id: Int) {
+    fun deleteTask(requestContext: RequestContext, id: Int) {
         transaction(db) {
             val task = TasksTable.select(TasksTable.id eq id).map {
                 TasksTable.toTask(it)
@@ -119,7 +120,7 @@ class TasksRepository (private val db: Database) {
 
             TasksTable.deleteWhere { TasksTable.id eq id }
             logger.info { "task with id $id successfully deleted from the db" }
-            addTaskRevision(loggedInUsername, task, UpdateType.DELETE)
+            addTaskRevision(requestContext.user.username, task, UpdateType.DELETE)
         }
     }
 
