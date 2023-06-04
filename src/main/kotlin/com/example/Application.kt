@@ -46,8 +46,8 @@ fun main() {
         modules(koinAppModule(db))
     }
 
-    val usersService: UsersServiceImpl = getKoin().get()
-    val tasksService: TasksServiceImpl = getKoin().get()
+    val usersService: UsersService = getKoin().get()
+    val tasksService: TasksService = getKoin().get()
 
     usersService.initializeAdminUser()
 

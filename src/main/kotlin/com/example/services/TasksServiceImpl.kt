@@ -39,7 +39,7 @@ class TasksServiceImpl(private val tasksRepository: TasksRepository, private val
             .validateDescriptionLength(1000)
             .also {
                 val id = tasksRepository.insertTask(requestContext, task)
-                logger.info { "Task $task created successfully" }
+                logger.info { "Task ${task.copy(taskId = id)} created successfully" }
                 return id
             }
     }

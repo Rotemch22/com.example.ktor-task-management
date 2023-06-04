@@ -101,7 +101,7 @@ class TasksRepository (private val db: Database) {
         return transaction(db) {
             TasksTable.select(TasksTable.id eq id).map {
                 TasksTable.toTask(it)
-            }.firstOrNull()
+            }.singleOrNull()
         }
     }
 
@@ -109,9 +109,8 @@ class TasksRepository (private val db: Database) {
         transaction(db) {
             val task = TasksTable.select(TasksTable.id eq id).map {
                 TasksTable.toTask(it)
-            }.firstOrNull()
+            }.singleOrNull()
 
-            // if no rows were updated then the task with given id does not exist
             if (task == null) {
                 val errorMsg = "No task with id $id exists in the db"
                 logger.error { errorMsg }
@@ -127,14 +126,14 @@ class TasksRepository (private val db: Database) {
 
     private fun addTaskRevision(loggedInUsername : String, task: Task, update: UpdateType) {
         transaction(db) {
-            val maxRevision = TasksRevisionsTable
+            val currentMaxRevision = TasksRevisionsTable
                 .slice(TasksRevisionsTable.revision)
                 .select { TasksRevisionsTable.taskId eq task.taskId }
                 .maxOfOrNull { it[TasksRevisionsTable.revision] } ?: 0
 
             TasksRevisionsTable.insert {
                 it[taskId] = task.taskId
-                it[revision] = maxRevision + 1
+                it[revision] = currentMaxRevision + 1
                 it[title] = task.title
                 it[description] = task.description
                 it[status] = task.status
@@ -146,7 +145,7 @@ class TasksRepository (private val db: Database) {
                 it[updateType] = update
             }
 
-            logger.info { "task revision ${maxRevision + 1} successfully inserted for task $task with update type $update" }
+            logger.info { "task revision ${currentMaxRevision + 1} successfully inserted for task $task with update type $update" }
         }
     }
 
