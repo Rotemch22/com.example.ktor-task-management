@@ -8,60 +8,66 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.mindrot.jbcrypt.BCrypt
+import java.util.concurrent.ConcurrentHashMap
 
 private val logger = KotlinLogging.logger {}
 
-class UsersRepository (private val db: Database){
-
+class UsersRepository(private val db: Database) {
+    private val cache = ConcurrentHashMap<Int, User>()
 
     fun insertUser(user: User): Int {
-        val id = transaction(db) {
+        val hashedPassword = BCrypt.hashpw(user.password, BCrypt.gensalt())
+        val newUserId = transaction(db) {
             UsersTable.insertAndGetId {
                 it[username] = user.username
-                it[password] = BCrypt.hashpw(user.password, BCrypt.gensalt())
+                it[password] = hashedPassword
                 it[email] = user.email
                 it[role] = user.role
                 it[manager] = user.manager?.userId?.let { managerId ->
                     EntityID(managerId, UsersTable)
                 }
             }
-        }
+        }.value
 
-        logger.info { "user $user successfully created in db with id ${id.value}" }
-        return id.value
+        logger.info { "user $user successfully created in db with id $newUserId" }
+        addToCache(user.copy(userId = newUserId, password = hashedPassword))
+        return newUserId
     }
 
 
-    fun getManagersToUsersMap() : Map<User, List<User>>{
-        return transaction(db) {
-            // query all the users with role END_USER and group them by their manager
-            // filter out the users with null managers even though there shouldn't be any
-            UsersTable.getUsersWithManagerData(UsersTable.role eq Role.END_USER)
-                .filter { it.manager != null }
-                .groupBy { it.manager!! }
-        }
+    fun getManagersToUsersMap(): Map<User, List<User>> {
+        val users = getAllUsers()
+        return users.filter { it.role == Role.END_USER && it.manager != null }.groupBy { it.manager!! }
     }
 
     fun getUserByUserName(username: String): User? {
-        return transaction (db) {
-            UsersTable.getUsersWithManagerData(UsersTable.username eq username).firstOrNull()
+        return cache.values.find { it.username == username } ?: transaction(db) {
+            UsersTable.getUsersWithManagerData(UsersTable.username eq username).singleOrNull()
+                ?.also { user -> addToCache(user) }
         }
     }
 
-    fun getUserById(userId : Int?): User? {
-        return transaction (db) {
-            UsersTable.getUsersWithManagerData(UsersTable.id eq userId).firstOrNull()
+    fun getUserById(userId: Int?): User? {
+        return userId?.let {
+            cache[userId] ?: transaction(db) {
+                UsersTable.getUsersWithManagerData(UsersTable.id eq userId).singleOrNull()
+                    ?.also { user -> addToCache(user) }
+            }
         }
     }
 
     fun getAllUsers(): List<User> {
-        return transaction (db) {
-            UsersTable.getUsersWithManagerData()
+        if (cache.isEmpty()) {
+            cache.putAll(transaction(db) {
+                UsersTable.getUsersWithManagerData()
+            }.associateBy { it.userId })
         }
+
+        return cache.values.toList()
     }
 
     fun initializeAdminUser() {
-        transaction (db) {
+        transaction(db) {
             // Check if admin user already exists
             val adminUser = UsersTable.select { UsersTable.role eq Role.ADMIN }.singleOrNull()
 
@@ -77,6 +83,10 @@ class UsersRepository (private val db: Database){
         }
     }
 
+    private fun addToCache(user: User) {
+        cache[user.userId] = user
+    }
+
     object UsersTable : IntIdTable() {
         val username = varchar("user_name", 100).uniqueIndex()
         val password = varchar("hashed_password", 100)
@@ -85,7 +95,7 @@ class UsersRepository (private val db: Database){
         val manager = reference("manager", UsersTable).nullable()
     }
 
-    private fun UsersTable.getUsersWithManagerData(where : Op<Boolean> = Op.TRUE): List<User> {
+    private fun UsersTable.getUsersWithManagerData(where: Op<Boolean> = Op.TRUE): List<User> {
         val managerTable = UsersTable.alias("managerTable")
         return UsersTable.leftJoin(managerTable, { manager }, { managerTable[UsersTable.id] })
             .select { where }.map {
