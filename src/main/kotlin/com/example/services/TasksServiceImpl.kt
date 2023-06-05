@@ -34,6 +34,7 @@ class TasksServiceImpl(private val tasksRepository: TasksRepository, private val
     override fun insertTask(requestContext: RequestContext, task: Task): Int {
         task
             .isAuthorizedForUser(requestContext.user)
+            .validateOwnerExists()
             .isDueDateInFuture()
             .validateTitleLength(100)
             .validateDescriptionLength(1000)
@@ -49,6 +50,7 @@ class TasksServiceImpl(private val tasksRepository: TasksRepository, private val
         task
             .isIdMatchUrl(id)
             .isAuthorizedForUser(requestContext.user) // Check if the user is authorized for the updated task
+            .validateOwnerExists()
             .isDueDateInFuture()
             .validateTitleLength(100)
             .validateDescriptionLength(1000)
@@ -110,14 +112,23 @@ class TasksServiceImpl(private val tasksRepository: TasksRepository, private val
     }
 
     private fun Task.validateTitleLength(maxLength: Int): Task {
-        require(title.isNotBlank()) { "Task title must not be empty" }
-        require(title.length <= maxLength) { "Task title exceeds the maximum length of $maxLength characters" }
-        return this
+        when{
+            title.isBlank() -> throw Exceptions.MissingTaskTitleException(this)
+            title.length > maxLength -> throw Exceptions.TaskFieldExceededMaxLength(this, "title", maxLength)
+            else -> return this
+        }
     }
 
     private fun Task.validateDescriptionLength(maxLength: Int): Task {
-        if (description != null) {
-            require(description.length <= maxLength) { "Task description exceeds the maximum length of $maxLength characters" }
+        if (description != null && description.length > maxLength){
+            throw Exceptions.TaskFieldExceededMaxLength(this, "description", maxLength)
+        }
+        return this
+    }
+
+    private fun Task.validateOwnerExists(): Task {
+        owner?.let {
+            usersService.getUserById(owner) ?: throw Exceptions.TaskOwnerDoesntExist(this)
         }
         return this
     }
