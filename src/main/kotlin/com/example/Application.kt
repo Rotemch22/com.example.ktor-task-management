@@ -31,6 +31,7 @@ import org.koin.dsl.module
 import org.koin.java.KoinJavaComponent.getKoin
 import org.mindrot.jbcrypt.BCrypt
 import org.postgresql.ds.PGSimpleDataSource
+import java.util.*
 
 @kotlinx.serialization.Serializable
 data class UserSession(val username: String) : Principal
@@ -56,13 +57,18 @@ fun main() {
 }
 
 fun initializeDatabase(): Database {
+    val properties = Properties()
+
+    // Load the properties from the application.properties file
+    properties.load(UsersRepository::class.java.classLoader.getResourceAsStream("application.properties"))
+
     // Load database configuration from the environment or a config file
     val dataSource = PGSimpleDataSource().apply {
-        user = System.getenv("DB_USER") ?: "test"
-        password = System.getenv("DB_PASSWORD") ?: "test"
-        databaseName = System.getenv("DB_NAME") ?: "tasks"
-        serverName = System.getenv("DB_HOST") ?: "localhost"
-        portNumber = System.getenv("DB_PORT")?.toIntOrNull() ?: 5432
+        user = properties.getProperty("DB_USER") ?: "test"
+        password = properties.getProperty("DB_PASSWORD") ?: "test"
+        databaseName = properties.getProperty("DB_NAME") ?: "tasks"
+        serverName = properties.getProperty("DB_HOST") ?: "localhost"
+        portNumber = properties.getProperty("DB_PORT")?.toIntOrNull() ?: 5432
     }
 
     return Database.connect(dataSource)
