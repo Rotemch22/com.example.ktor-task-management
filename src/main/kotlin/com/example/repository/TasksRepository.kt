@@ -31,7 +31,7 @@ class TasksRepository (private val db: Database) {
 
         logger.info { "task $task successfully created in db with id ${id.value}" }
 
-        addTaskRevision(requestContext.user.username, task.copy(taskId = id.value), UpdateType.CREATE)
+        addTaskRevision(requestContext.user.userId, task.copy(taskId = id.value), UpdateType.CREATE)
         return id.value
     }
 
@@ -49,13 +49,12 @@ class TasksRepository (private val db: Database) {
 
             // if no rows were updated then the task with given id does not exist
             if (rowsUpdated == 0) {
-                val errorMsg = "No task with id ${task.taskId} exists in the db"
-                logger.error { errorMsg }
+                logger.error { "No task with id ${task.taskId} exists in the db" }
                 throw Exceptions.TaskNotFoundException(task.taskId)
             }
 
             logger.info { "task $task successfully updated in db" }
-            addTaskRevision(requestContext.user.username, task, UpdateType.UPDATE)
+            addTaskRevision(requestContext.user.userId, task, UpdateType.UPDATE)
         }
     }
 
@@ -112,19 +111,18 @@ class TasksRepository (private val db: Database) {
             }.singleOrNull()
 
             if (task == null) {
-                val errorMsg = "No task with id $id exists in the db"
-                logger.error { errorMsg }
+                logger.error { "No task with id $id exists in the db" }
                 throw Exceptions.TaskNotFoundException(id)
             }
 
             TasksTable.deleteWhere { TasksTable.id eq id }
             logger.info { "task with id $id successfully deleted from the db" }
-            addTaskRevision(requestContext.user.username, task, UpdateType.DELETE)
+            addTaskRevision(requestContext.user.userId, task, UpdateType.DELETE)
         }
     }
 
 
-    private fun addTaskRevision(loggedInUsername : String, task: Task, update: UpdateType) {
+    private fun addTaskRevision(loggedInUserId : Int, task: Task, update: UpdateType) {
         transaction(db) {
             val currentMaxRevision = TasksRevisionsTable
                 .slice(TasksRevisionsTable.revision)
@@ -140,7 +138,7 @@ class TasksRepository (private val db: Database) {
                 it[severity] = task.severity
                 it[owner] = task.owner
                 it[dueDate] = task.dueDate.toJavaLocalDateTime()
-                it[modifiedBy] = loggedInUsername
+                it[modifiedBy] = loggedInUserId
                 it[modifiedDate] = LocalDateTime.now()
                 it[updateType] = update
             }
@@ -155,7 +153,7 @@ class TasksRepository (private val db: Database) {
         val description = varchar("description", 1000).nullable()
         val status = enumeration("task_status", TaskStatus::class)
         val severity = enumeration("task_severity", TaskSeverity::class)
-        val owner = integer("owner").nullable()
+        val owner = reference("owner", UsersRepository.UsersTable).nullable()
         val dueDate = datetime("dueDate")
     }
 
@@ -166,9 +164,9 @@ class TasksRepository (private val db: Database) {
         val description = varchar("description", 1000).nullable()
         val status = enumeration("task_status", TaskStatus::class)
         val severity = enumeration("task_severity", TaskSeverity::class)
-        val owner = integer("owner").nullable()
+        val owner = reference("owner", UsersRepository.UsersTable).nullable()
         val dueDate = datetime("dueDate")
-        val modifiedBy = varchar("modified_by", 100)
+        val modifiedBy = reference("modified_by", UsersRepository.UsersTable)
         val modifiedDate = datetime("modified_date")
         val updateType = enumeration("update_type", UpdateType::class)
         init {
@@ -181,7 +179,7 @@ class TasksRepository (private val db: Database) {
         val description = it[description]
         val status = it[status]
         val severity = it[severity]
-        val owner = it[owner]
+        val owner = it[owner]?.value
         val dueDate = it[dueDate].toKotlinLocalDateTime()
         val taskId = it[id].value
         return Task(title, description, status, severity, owner, dueDate, taskId)
@@ -193,11 +191,11 @@ class TasksRepository (private val db: Database) {
         val description = it[description]
         val status = it[status]
         val severity = it[severity]
-        val owner = it[owner]
+        val owner = it[owner]?.value
         val dueDate = it[dueDate].toKotlinLocalDateTime()
         val taskId = it[taskId]
         val revision = it[revision]
-        val modifiedBy = it[modifiedBy]
+        val modifiedBy = it[modifiedBy].value
         val modifiedDate = it[modifiedDate].toKotlinLocalDateTime()
         val updateType = it[updateType]
         return TaskRevision(

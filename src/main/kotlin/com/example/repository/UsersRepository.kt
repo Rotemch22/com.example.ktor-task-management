@@ -14,6 +14,7 @@ private val logger = KotlinLogging.logger {}
 
 class UsersRepository(private val db: Database) {
     private val cache = ConcurrentHashMap<Int, User>()
+    private var loadedAllUsers = false
 
     fun insertUser(user: User): Int {
         val hashedPassword = BCrypt.hashpw(user.password, BCrypt.gensalt())
@@ -57,28 +58,32 @@ class UsersRepository(private val db: Database) {
     }
 
     fun getAllUsers(): List<User> {
-        if (cache.isEmpty()) {
+        if (!loadedAllUsers) {
             cache.putAll(transaction(db) {
                 UsersTable.getUsersWithManagerData()
             }.associateBy { it.userId })
+            loadedAllUsers = true
         }
 
         return cache.values.toList()
     }
 
-    fun initializeAdminUser() {
-        transaction(db) {
+    fun initializeAdminUser(): Int {
+        return transaction(db) {
             // Check if admin user already exists
             val adminUser = UsersTable.select { UsersTable.role eq Role.ADMIN }.singleOrNull()
-
-            if (adminUser == null) {
-                // Admin user doesn't exist, create it
-                UsersTable.insert {
+            adminUser?.let {
+                adminUser[UsersTable.id].value
+            } ?: run {
+                val newUserId = UsersTable.insertAndGetId {
                     it[username] = "admin"
                     it[password] = BCrypt.hashpw("admin", BCrypt.gensalt())
-                    it[email] = "admin@email.com"
+                    it[email] = "admin@example.com"
                     it[role] = Role.ADMIN
-                }
+                }.value
+
+                logger.info { "Admin user created with ID: $newUserId" }
+                newUserId
             }
         }
     }

@@ -48,6 +48,7 @@ class IntegrationTest {
     private var sessionCookie: Cookie? = null
     private val dueDate = LocalDateTime.now().withNano(0).plusHours(24).toKotlinLocalDateTime()
 
+    private var adminId: Int? = null
     private var manager1Id: Int? = null
     private var manager2Id: Int? = null
     private var user1Id: Int? = null
@@ -69,7 +70,7 @@ class IntegrationTest {
             SchemaUtils.drop(TasksRepository.TasksTable, TasksRepository.TasksRevisionsTable, UsersRepository.UsersTable)
             SchemaUtils.createMissingTablesAndColumns(TasksRepository.TasksTable, TasksRepository.TasksRevisionsTable, UsersRepository.UsersTable)
             val usersRepository: UsersRepository = getKoin().get()
-            usersRepository.initializeAdminUser()
+            adminId = usersRepository.initializeAdminUser()
         }
 
         client = TestApplicationEngine(createTestEnvironment())
@@ -315,22 +316,22 @@ class IntegrationTest {
 
                 assertEquals(4, taskRevisions.size)
                 assertEquals(UpdateType.CREATE, taskRevisions[0].updateType)
-                assertEquals("admin", taskRevisions[0].modifiedBy)
+                assertEquals(adminId, taskRevisions[0].modifiedBy)
                 assertEquals(TaskStatus.NOT_STARTED, taskRevisions[0].task.status)
                 assertNull(taskRevisions[0].task.owner)
 
                 assertEquals(UpdateType.UPDATE, taskRevisions[1].updateType)
-                assertEquals("manager2", taskRevisions[1].modifiedBy)
+                assertEquals(manager2Id, taskRevisions[1].modifiedBy)
                 assertEquals(TaskStatus.IN_PROGRESS, taskRevisions[1].task.status)
                 assertEquals(TaskSeverity.URGENT, taskRevisions[1].task.severity)
                 assertEquals(manager2Id, taskRevisions[1].task.owner)
 
                 assertEquals(UpdateType.UPDATE, taskRevisions[2].updateType)
-                assertEquals("manager2", taskRevisions[2].modifiedBy)
+                assertEquals(manager2Id, taskRevisions[2].modifiedBy)
                 assertEquals(TaskStatus.COMPLETED, taskRevisions[2].task.status)
 
                 assertEquals(UpdateType.DELETE, taskRevisions[3].updateType)
-                assertEquals("manager2", taskRevisions[3].modifiedBy)
+                assertEquals(manager2Id, taskRevisions[3].modifiedBy)
             }
         }
     }

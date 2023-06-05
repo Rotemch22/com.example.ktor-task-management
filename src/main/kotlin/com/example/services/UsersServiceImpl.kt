@@ -39,8 +39,8 @@ class UsersServiceImpl(private val usersRepository: UsersRepository) : UsersServ
         return usersRepository.getManagersToUsersMap()
     }
 
-    override fun initializeAdminUser() {
-        usersRepository.initializeAdminUser()
+    override fun initializeAdminUser(): Int {
+        return usersRepository.initializeAdminUser()
     }
 
 }

@@ -47,6 +47,7 @@ interface UsersService {
     /**
      * Initializes the admin user in the system.
      * This should be called during system initialization.
+     * @return the user id of the admin user
      */
-    fun initializeAdminUser()
+    fun initializeAdminUser(): Int
 }

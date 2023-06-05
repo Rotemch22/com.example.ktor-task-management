@@ -30,7 +30,7 @@ data class Task(
 data class TaskRevision(
     val task : Task,
     val revision : Int,
-    val modifiedBy : String,
+    val modifiedBy : Int,
     val modifiedDate: LocalDateTime,
     val updateType: UpdateType
 )
