@@ -118,9 +118,7 @@ fun Application.module(tasksService: TasksService, usersService: UsersService) {
     }
 
     install(Sessions) {
-        cookie<UserSession>("SESSION") {
-            cookie.extensions["SameSite"] = "lax" // Set the SameSite attribute for the cookie
-        }
+        cookie<UserSession>("SESSION")
     }
 
 
