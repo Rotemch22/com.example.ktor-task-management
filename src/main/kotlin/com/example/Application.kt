@@ -66,7 +66,7 @@ fun initializeDatabase(): Database {
     val properties = Properties()
 
     // Load the properties from the application.properties file
-    properties.load(UsersRepositoryImpl::class.java.classLoader.getResourceAsStream("application.properties"))
+    properties.load(Application::class.java.classLoader.getResourceAsStream("application.properties"))
 
     // Load database configuration from the environment or a config file
     val dataSource = PGSimpleDataSource().apply {
