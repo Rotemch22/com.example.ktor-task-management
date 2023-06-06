@@ -1,8 +1,8 @@
 package com.example
 
 import com.example.models.*
-import com.example.repository.TasksRepository
-import com.example.repository.UsersRepository
+import com.example.repository.TasksRepositoryImpl
+import com.example.repository.UsersRepositoryImpl
 import kotlinx.datetime.LocalDateTime
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -25,8 +25,8 @@ class TasksTableRepositoryTest {
         portNumber = 5433
     }
     private val db = Database.connect(dataSource)
-    private val tasksRepository = TasksRepository(db)
-    private val usersRepository = UsersRepository(db)
+    private val tasksRepository = TasksRepositoryImpl(db)
+    private val usersRepository = UsersRepositoryImpl(db)
 
     private val task1 = Task("task1","task description1", TaskStatus.NOT_STARTED, TaskSeverity.HIGH, null, LocalDateTime.parse("2023-08-30T18:43:00"),1)
     private val task2 = Task("task2","task description2", TaskStatus.IN_PROGRESS, TaskSeverity.URGENT, 1, LocalDateTime.parse("2024-01-01T00:00:00"), 2)
@@ -36,8 +36,8 @@ class TasksTableRepositoryTest {
     @Before
     fun resetDB(){
         transaction (db) {
-            SchemaUtils.drop(TasksRepository.TasksTable, TasksRepository.TasksRevisionsTable, UsersRepository.UsersTable)
-            SchemaUtils.createMissingTablesAndColumns(TasksRepository.TasksTable, TasksRepository.TasksRevisionsTable, UsersRepository.UsersTable)
+            SchemaUtils.drop(TasksRepositoryImpl.TasksTable, TasksRepositoryImpl.TasksRevisionsTable, UsersRepositoryImpl.UsersTable)
+            SchemaUtils.createMissingTablesAndColumns(TasksRepositoryImpl.TasksTable, TasksRepositoryImpl.TasksRevisionsTable, UsersRepositoryImpl.UsersTable)
         }
 
         adminId = usersRepository.initializeAdminUser()
@@ -47,7 +47,7 @@ class TasksTableRepositoryTest {
     @After
     fun cleanDB(){
         transaction (db) {
-            SchemaUtils.drop(TasksRepository.TasksTable, TasksRepository.TasksRevisionsTable, UsersRepository.UsersTable)
+            SchemaUtils.drop(TasksRepositoryImpl.TasksTable, TasksRepositoryImpl.TasksRevisionsTable, UsersRepositoryImpl.UsersTable)
         }
     }
 

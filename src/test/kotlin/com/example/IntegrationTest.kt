@@ -4,7 +4,9 @@ import TasksService
 import UsersService
 import com.example.models.*
 import com.example.repository.TasksRepository
+import com.example.repository.TasksRepositoryImpl
 import com.example.repository.UsersRepository
+import com.example.repository.UsersRepositoryImpl
 import com.example.routes.UserInput
 import com.example.routes.UserResponse
 import com.example.services.TasksServiceImpl
@@ -38,8 +40,8 @@ class IntegrationTest {
 
 
     private val appModule = module {
-        single { TasksRepository(db) }
-        single { UsersRepository(db) }
+        single<TasksRepository> { TasksRepositoryImpl(db) }
+        single<UsersRepository> { UsersRepositoryImpl(db) }
         single<UsersService> { UsersServiceImpl(get()) }
         single<TasksService> { TasksServiceImpl(get(), get()) }
     }
@@ -67,8 +69,8 @@ class IntegrationTest {
         }
 
         transaction (db) {
-            SchemaUtils.drop(TasksRepository.TasksTable, TasksRepository.TasksRevisionsTable, UsersRepository.UsersTable)
-            SchemaUtils.createMissingTablesAndColumns(TasksRepository.TasksTable, TasksRepository.TasksRevisionsTable, UsersRepository.UsersTable)
+            SchemaUtils.drop(TasksRepositoryImpl.TasksTable, TasksRepositoryImpl.TasksRevisionsTable, UsersRepositoryImpl.UsersTable)
+            SchemaUtils.createMissingTablesAndColumns(TasksRepositoryImpl.TasksTable, TasksRepositoryImpl.TasksRevisionsTable, UsersRepositoryImpl.UsersTable)
             val usersRepository: UsersRepository = getKoin().get()
             adminId = usersRepository.initializeAdminUser()
         }
@@ -119,7 +121,7 @@ class IntegrationTest {
     @AfterTest
     fun teardown() {
         transaction (db) {
-            SchemaUtils.drop(TasksRepository.TasksTable, TasksRepository.TasksRevisionsTable, UsersRepository.UsersTable)
+            SchemaUtils.drop(TasksRepositoryImpl.TasksTable, TasksRepositoryImpl.TasksRevisionsTable, UsersRepositoryImpl.UsersTable)
         }
 
         client!!.stop(0L, 0L)

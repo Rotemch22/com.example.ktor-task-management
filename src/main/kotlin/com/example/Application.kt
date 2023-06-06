@@ -6,7 +6,9 @@ import com.example.exceptions.ErrorResponse
 import com.example.exceptions.Exceptions
 import com.example.models.User
 import com.example.repository.TasksRepository
+import com.example.repository.TasksRepositoryImpl
 import com.example.repository.UsersRepository
+import com.example.repository.UsersRepositoryImpl
 import com.example.routes.taskRoutes
 import com.example.routes.userRoutes
 import com.example.services.TasksServiceImpl
@@ -64,7 +66,7 @@ fun initializeDatabase(): Database {
     val properties = Properties()
 
     // Load the properties from the application.properties file
-    properties.load(UsersRepository::class.java.classLoader.getResourceAsStream("application.properties"))
+    properties.load(UsersRepositoryImpl::class.java.classLoader.getResourceAsStream("application.properties"))
 
     // Load database configuration from the environment or a config file
     val dataSource = PGSimpleDataSource().apply {
@@ -79,15 +81,15 @@ fun initializeDatabase(): Database {
 }
 
 fun koinAppModule(db: Database) = module {
-    single { TasksRepository(db) }
-    single { UsersRepository(db) }
+    single<TasksRepository> { TasksRepositoryImpl(db) }
+    single<UsersRepository> { UsersRepositoryImpl(db) }
     single<UsersService> { UsersServiceImpl(get()) }
     single<TasksService> { TasksServiceImpl(get(), get()) }
 }
 
 fun createDatabaseTables(db: Database) {
     transaction(db) {
-        SchemaUtils.createMissingTablesAndColumns(UsersRepository.UsersTable, TasksRepository.TasksTable, TasksRepository.TasksRevisionsTable)
+        SchemaUtils.createMissingTablesAndColumns(UsersRepositoryImpl.UsersTable, TasksRepositoryImpl.TasksTable, TasksRepositoryImpl.TasksRevisionsTable)
     }
 }
 

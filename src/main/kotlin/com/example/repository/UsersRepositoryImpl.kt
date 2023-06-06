@@ -12,11 +12,11 @@ import java.util.concurrent.ConcurrentHashMap
 
 private val logger = KotlinLogging.logger {}
 
-class UsersRepository(private val db: Database) {
+class UsersRepositoryImpl(private val db: Database) : UsersRepository {
     private val cache = ConcurrentHashMap<Int, User>()
     private var loadedAllUsers = false
 
-    fun insertUser(user: User): Int {
+    override fun insertUser(user: User): Int {
         val hashedPassword = BCrypt.hashpw(user.password, BCrypt.gensalt())
         val newUserId = transaction(db) {
             UsersTable.insertAndGetId {
@@ -36,19 +36,19 @@ class UsersRepository(private val db: Database) {
     }
 
 
-    fun getManagersToUsersMap(): Map<User, List<User>> {
+    override fun getManagersToUsersMap(): Map<User, List<User>> {
         val users = getAllUsers()
         return users.filter { it.role == Role.END_USER && it.manager != null }.groupBy { it.manager!! }
     }
 
-    fun getUserByUserName(username: String): User? {
+    override fun getUserByUserName(username: String): User? {
         return cache.values.find { it.username == username } ?: transaction(db) {
             UsersTable.getUsersWithManagerData(UsersTable.username eq username).singleOrNull()
                 ?.also { user -> addToCache(user) }
         }
     }
 
-    fun getUserById(userId: Int?): User? {
+    override fun getUserById(userId: Int?): User? {
         return userId?.let {
             cache[userId] ?: transaction(db) {
                 UsersTable.getUsersWithManagerData(UsersTable.id eq userId).singleOrNull()
@@ -57,7 +57,7 @@ class UsersRepository(private val db: Database) {
         }
     }
 
-    fun getAllUsers(): List<User> {
+    override fun getAllUsers(): List<User> {
         if (!loadedAllUsers) {
             cache.putAll(transaction(db) {
                 UsersTable.getUsersWithManagerData()
@@ -68,7 +68,7 @@ class UsersRepository(private val db: Database) {
         return cache.values.toList()
     }
 
-    fun initializeAdminUser(): Int {
+    override fun initializeAdminUser(): Int {
         return transaction(db) {
             // Check if admin user already exists
             val adminUser = UsersTable.select { UsersTable.role eq Role.ADMIN }.singleOrNull()

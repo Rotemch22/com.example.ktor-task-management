@@ -1,10 +1,10 @@
 package com.example
 
+import UsersService
 import com.example.exceptions.Exceptions
 import com.example.models.*
 import com.example.repository.TasksRepository
 import com.example.services.TasksServiceImpl
-import com.example.services.UsersServiceImpl
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.datetime.toKotlinLocalDateTime
@@ -17,7 +17,7 @@ class TasksServiceTest {
     private val user = User("admin", "admin", "admin@email.com", Role.ADMIN, null)
 
     private val tasksRepository = mockk<TasksRepository>()
-    private val usersService = mockk<UsersServiceImpl>()
+    private val usersService = mockk<UsersService>()
     private val taskService = TasksServiceImpl(tasksRepository, usersService)
 
     private val task = Task(

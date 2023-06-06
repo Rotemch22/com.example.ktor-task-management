@@ -2,7 +2,7 @@ package com.example
 
 import com.example.models.Role
 import com.example.models.User
-import com.example.repository.UsersRepository
+import com.example.repository.UsersRepositoryImpl
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -24,20 +24,20 @@ class UsersTableRepositoryTest {
     }
     private val db = Database.connect(dataSource)
 
-    private val usersRepository = UsersRepository(db)
+    private val usersRepository = UsersRepositoryImpl(db)
 
     @Before
     fun resetDB(){
         transaction (db) {
-            SchemaUtils.drop(UsersRepository.UsersTable)
-            SchemaUtils.createMissingTablesAndColumns(UsersRepository.UsersTable)
+            SchemaUtils.drop(UsersRepositoryImpl.UsersTable)
+            SchemaUtils.createMissingTablesAndColumns(UsersRepositoryImpl.UsersTable)
         }
     }
 
     @After
     fun cleanDB(){
         transaction (db) {
-            SchemaUtils.drop(UsersRepository.UsersTable)
+            SchemaUtils.drop(UsersRepositoryImpl.UsersTable)
         }
     }
 
