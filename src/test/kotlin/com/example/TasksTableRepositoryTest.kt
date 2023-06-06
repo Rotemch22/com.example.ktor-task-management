@@ -28,10 +28,11 @@ class TasksTableRepositoryTest {
     private val tasksRepository = TasksRepositoryImpl(db)
     private val usersRepository = UsersRepositoryImpl(db)
 
-    private val task1 = Task("task1","task description1", TaskStatus.NOT_STARTED, TaskSeverity.HIGH, null, LocalDateTime.parse("2023-08-30T18:43:00"),1)
-    private val task2 = Task("task2","task description2", TaskStatus.IN_PROGRESS, TaskSeverity.URGENT, 1, LocalDateTime.parse("2024-01-01T00:00:00"), 2)
+    private val task1 = TaskDetails("task1","task description1", TaskStatus.NOT_STARTED, TaskSeverity.HIGH, null, LocalDateTime.parse("2023-08-30T18:43:00"))
+    private val task2 = TaskDetails("task2","task description2", TaskStatus.IN_PROGRESS, TaskSeverity.URGENT, 1, LocalDateTime.parse("2024-01-01T00:00:00"))
+
     private var adminId: Int? = null
-    var user: User? = null
+    private var user: User? = null
 
     @Before
     fun resetDB(){
@@ -57,37 +58,42 @@ class TasksTableRepositoryTest {
             tasksRepository.insertTask(RequestContext(user!!), task1)
         }
 
-        val readItems = tasksRepository.getAllTasks()
-        assertEquals(task1, readItems.first())
+        val tasks = tasksRepository.getAllTasks()
+        assertEquals(1, tasks.size)
+        assertEquals(task1, tasks.first().taskDetails)
 
     }
 
     @Test
     fun testUpdateTask(){
+        var taskId : Int? = null
         transaction (db) {
-            tasksRepository.insertTask(RequestContext(user!!), task1)
+            taskId = tasksRepository.insertTask(RequestContext(user!!), task1)
             tasksRepository.insertTask(RequestContext(user!!), task2)
         }
 
-        tasksRepository.updateTask(RequestContext(user!!), task1.copy(status = TaskStatus.COMPLETED))
-        val updatedTask = tasksRepository.getTaskById(task1.taskId)
-        assertEquals(task1.copy(status = TaskStatus.COMPLETED), updatedTask)
+        tasksRepository.updateTask(RequestContext(user!!), taskId!!, task1.copy(status = TaskStatus.COMPLETED))
+        val updatedTask = tasksRepository.getTaskById(taskId!!)
+        assertEquals(task1.copy(status = TaskStatus.COMPLETED), updatedTask?.taskDetails)
+        assertEquals(taskId, updatedTask?.taskId)
     }
 
     @Test
     fun testDeleteTask(){
+        var taskId1 : Int? = null
+        var taskId2 : Int? = null
         transaction (db) {
-            tasksRepository.insertTask(RequestContext(user!!), task1)
-            tasksRepository.insertTask(RequestContext(user!!), task2)
+            taskId1 = tasksRepository.insertTask(RequestContext(user!!), task1)
+            taskId2 = tasksRepository.insertTask(RequestContext(user!!), task2)
         }
 
-        tasksRepository.deleteTask(RequestContext(user!!), task1.taskId)
-        val deletedTask = tasksRepository.getTaskById(task1.taskId)
+        tasksRepository.deleteTask(RequestContext(user!!), taskId1!!)
+        val deletedTask = tasksRepository.getTaskById(taskId1!!)
         assertNull(deletedTask)
 
-        val readItems = tasksRepository.getAllTasks()
-        assertEquals(1, readItems.size)
-        assertEquals(listOf(task2), readItems)
+        val tasks = tasksRepository.getAllTasks()
+        assertEquals(1, tasks.size)
+        assertEquals(listOf(TaskRecord(task2, taskId2!!)), tasks)
     }
 
     @Test
@@ -97,9 +103,9 @@ class TasksTableRepositoryTest {
             tasksRepository.insertTask(RequestContext(user!!), task2)
         }
 
-        val readItems = tasksRepository.getAllTasks()
-        assertEquals(2, readItems.size)
-        assertEquals(listOf(task1, task2), readItems)
+        val tasks = tasksRepository.getAllTasks()
+        assertEquals(2, tasks.size)
+        assertEquals(listOf(task1, task2), tasks.map { it.taskDetails })
 
     }
 
@@ -111,7 +117,7 @@ class TasksTableRepositoryTest {
         }
 
         val task = tasksRepository.getTaskById(2)
-        assertEquals(task2, task)
+        assertEquals(task2, task?.taskDetails)
 
         val noneExistingTask = tasksRepository.getTaskById(7)
         assertNull(noneExistingTask)
@@ -119,21 +125,22 @@ class TasksTableRepositoryTest {
 
     @Test
     fun testGetTaskHistory(){
+        var taskId : Int? = null
         transaction (db) {
-            tasksRepository.insertTask(RequestContext(user!!), task1)
-            tasksRepository.updateTask(RequestContext(user!!), task1.copy(status = TaskStatus.IN_PROGRESS))
-            tasksRepository.updateTask(RequestContext(user!!), task1.copy(status = TaskStatus.COMPLETED))
-            tasksRepository.deleteTask(RequestContext(user!!), task1.taskId)
+            taskId = tasksRepository.insertTask(RequestContext(user!!), task1)
+            tasksRepository.updateTask(RequestContext(user!!), taskId!!, task1.copy(status = TaskStatus.IN_PROGRESS))
+            tasksRepository.updateTask(RequestContext(user!!), taskId!!, task1.copy(status = TaskStatus.COMPLETED))
+            tasksRepository.deleteTask(RequestContext(user!!), taskId!!)
         }
 
-        val taskHistory = tasksRepository.getTaskHistory(task1.taskId)
+        val taskHistory = tasksRepository.getTaskHistory(taskId!!)
         assertEquals(4, taskHistory.size)
         assertEquals(UpdateType.CREATE, taskHistory[0].updateType)
-        assertEquals(TaskStatus.NOT_STARTED, taskHistory[0].task.status)
+        assertEquals(TaskStatus.NOT_STARTED, taskHistory[0].task.taskDetails.status)
         assertEquals(UpdateType.UPDATE, taskHistory[1].updateType)
-        assertEquals(TaskStatus.IN_PROGRESS, taskHistory[1].task.status)
+        assertEquals(TaskStatus.IN_PROGRESS, taskHistory[1].task.taskDetails.status)
         assertEquals(UpdateType.UPDATE, taskHistory[2].updateType)
-        assertEquals(TaskStatus.COMPLETED, taskHistory[2].task.status)
+        assertEquals(TaskStatus.COMPLETED, taskHistory[2].task.taskDetails.status)
         assertEquals(UpdateType.DELETE, taskHistory[3].updateType)
     }
 }

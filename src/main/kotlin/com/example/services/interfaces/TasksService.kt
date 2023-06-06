@@ -1,6 +1,9 @@
+package com.example.services.interfaces
+
 import com.example.RequestContext
 import com.example.exceptions.Exceptions
-import com.example.models.Task
+import com.example.models.TaskRecord
+import com.example.models.TaskDetails
 import com.example.models.TaskRevision
 import com.example.models.TasksQueryRequest
 
@@ -17,7 +20,7 @@ interface TasksService {
      * @return The list of authorized tasks.
      * @throws Exceptions.TaskNotAuthorizedForUser if a task is not authorized for the user in the request context.
      */
-    fun getTasks(requestContext: RequestContext, query: TasksQueryRequest): List<Task>
+    fun getTasks(requestContext: RequestContext, query: TasksQueryRequest): List<TaskRecord>
 
     /**
      * Retrieves the authorized task by its ID.
@@ -28,7 +31,7 @@ interface TasksService {
      * @throws Exceptions.TaskNotFoundException if the task with the given ID is not found.
      * @throws Exceptions.TaskNotAuthorizedForUser if the task is not authorized for the user in the request context.
      */
-    fun getAuthorizedTaskById(requestContext: RequestContext, id: Int): Task
+    fun getAuthorizedTaskById(requestContext: RequestContext, id: Int): TaskRecord
 
     /**
      * Retrieves the history of revisions for a task.
@@ -49,7 +52,7 @@ interface TasksService {
      * @throws Exceptions.MissingTaskTitleException if the task title is empty.
      * @throws Exceptions.TaskFieldExceededMaxLength if the task title or description length exceeds the maximum limits.
      */
-    fun insertTask(requestContext: RequestContext, task: Task): Int
+    fun insertTask(requestContext: RequestContext, task: TaskDetails): Int
 
     /**
      * Updates an existing task in the system.
@@ -59,12 +62,11 @@ interface TasksService {
      * @param task The updated task data.
      * @throws Exceptions.TaskNotFoundException if the task with the given ID is not found.
      * @throws Exceptions.TaskNotAuthorizedForUser if the task is not authorized for the user in the request context.
-     * @throws Exceptions.MismatchedTaskIdException if the ID in the URL does not match the task's ID.
      * @throws Exceptions.TaskDueDatePastException if the task's due date is in the past.
      * @throws Exceptions.MissingTaskTitleException if the task title is empty.
      * @throws Exceptions.TaskFieldExceededMaxLength if the task title or description length exceeds the maximum limits.
      */
-    fun updateTask(requestContext: RequestContext, id: Int, task: Task)
+    fun updateTask(requestContext: RequestContext, id: Int, task: TaskDetails)
 
     /**
      * Deletes a task from the system.

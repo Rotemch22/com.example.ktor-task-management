@@ -1,16 +1,16 @@
 package com.example
 
-import TasksService
-import UsersService
 import com.example.models.*
-import com.example.repository.TasksRepository
 import com.example.repository.TasksRepositoryImpl
-import com.example.repository.UsersRepository
 import com.example.repository.UsersRepositoryImpl
+import com.example.repository.interfaces.TasksRepository
+import com.example.repository.interfaces.UsersRepository
 import com.example.routes.UserInput
 import com.example.routes.UserResponse
 import com.example.services.TasksServiceImpl
 import com.example.services.UsersServiceImpl
+import com.example.services.interfaces.TasksService
+import com.example.services.interfaces.UsersService
 import io.ktor.http.*
 import io.ktor.server.testing.*
 import kotlinx.datetime.toKotlinLocalDateTime
@@ -57,10 +57,10 @@ class IntegrationTest {
     private var user2Id: Int? = null
     private var user3Id: Int? = null
 
-    private var task1: Task? = null
-    private var task2: Task? = null
-    private var task3: Task? = null
-    private var task4: Task? = null
+    private var task1: TaskRecord? = null
+    private var task2: TaskRecord? = null
+    private var task3: TaskRecord? = null
+    private var task4: TaskRecord? = null
 
     @BeforeTest
     fun setup() {
@@ -91,25 +91,25 @@ class IntegrationTest {
             user3Id = createAndVerifyUser(sessionCookie, UserInput("user3", "user3", "user3@email.com", Role.END_USER, manager2Id))
 
             task1 = createAndVerifyTask(
-                sessionCookie, Task(
+                sessionCookie, TaskDetails(
                     "title1", "description1", TaskStatus.NOT_STARTED, TaskSeverity.HIGH, user1Id,
                     dueDate
                 )
             )
             task2 = createAndVerifyTask(
-                sessionCookie, Task(
+                sessionCookie, TaskDetails(
                     "title2", "description2", TaskStatus.NOT_STARTED, TaskSeverity.HIGH, user2Id,
                     dueDate
                 )
             )
             task3 = createAndVerifyTask(
-                sessionCookie, Task(
+                sessionCookie, TaskDetails(
                     "title3", "description3", TaskStatus.NOT_STARTED, TaskSeverity.HIGH, user3Id,
                     dueDate
                 )
             )
             task4 = createAndVerifyTask(
-                sessionCookie, Task(
+                sessionCookie, TaskDetails(
                     "title4", "description4", TaskStatus.NOT_STARTED, TaskSeverity.HIGH, null,
                     dueDate
                 )
@@ -136,7 +136,7 @@ class IntegrationTest {
             }.let { tasksResponse ->
                 assertEquals(HttpStatusCode.OK, tasksResponse?.response?.status())
 
-                val tasks = Json.decodeFromString<List<Task>>(tasksResponse?.response?.content!!)
+                val tasks = Json.decodeFromString<List<TaskRecord>>(tasksResponse?.response?.content!!)
                 assertEquals(listOf(task1, task2, task3, task4), tasks)
             }
         }
@@ -151,7 +151,7 @@ class IntegrationTest {
             }.let { tasksResponse ->
                 assertEquals(HttpStatusCode.OK, tasksResponse.response.status())
 
-                val tasks = Json.decodeFromString<List<Task>>(tasksResponse.response.content!!)
+                val tasks = Json.decodeFromString<List<TaskRecord>>(tasksResponse.response.content!!)
                 assertEquals(listOf(task1, task2, task4), tasks)
             }
 
@@ -161,7 +161,7 @@ class IntegrationTest {
             }.let { tasksResponse ->
                 assertEquals(HttpStatusCode.OK, tasksResponse.response.status())
 
-                val tasks = Json.decodeFromString<List<Task>>(tasksResponse.response.content!!)
+                val tasks = Json.decodeFromString<List<TaskRecord>>(tasksResponse.response.content!!)
                 assertEquals(listOf(task3, task4), tasks)
             }
         }
@@ -177,7 +177,7 @@ class IntegrationTest {
             }.let { tasksResponse ->
                 assertEquals(HttpStatusCode.OK, tasksResponse.response.status())
 
-                val tasks = Json.decodeFromString<List<Task>>(tasksResponse.response.content!!)
+                val tasks = Json.decodeFromString<List<TaskRecord>>(tasksResponse.response.content!!)
                 assertEquals(listOf(task1, task4), tasks)
             }
         }
@@ -192,7 +192,7 @@ class IntegrationTest {
             }.let { tasksResponse ->
                 assertEquals(HttpStatusCode.OK, tasksResponse.response.status())
 
-                val task = Json.decodeFromString<Task>(tasksResponse.response.content!!)
+                val task = Json.decodeFromString<TaskRecord>(tasksResponse.response.content!!)
                 assertEquals(task1, task)
             }
         }
@@ -229,7 +229,7 @@ class IntegrationTest {
             handleRequest(HttpMethod.Put, "/tasks/${task3?.taskId}") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addHeader(HttpHeaders.Cookie, "SESSION=${sessionCookie?.value}")
-                setBody(Json.encodeToString(task3?.copy(owner = manager1Id)))
+                setBody(Json.encodeToString(task3?.taskDetails!!.copy(owner = manager1Id)))
             }.let { tasksResponse ->
                 assertEquals(HttpStatusCode.Unauthorized, tasksResponse.response.status())
             }
@@ -240,15 +240,15 @@ class IntegrationTest {
     fun `test update task with authorized manager logged-in user` (){
         with(client) {
             sessionCookie = this?.login("manager2", "manager2")!!
-            val updatedTask = task3?.copy(owner = manager2Id)
+            val updatedTask = task3?.taskDetails!!.copy(owner = manager2Id)
             handleRequest(HttpMethod.Put, "/tasks/${task3?.taskId}") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addHeader(HttpHeaders.Cookie, "SESSION=${sessionCookie?.value}")
                 setBody(Json.encodeToString(updatedTask))
             }.let { tasksResponse ->
                 assertEquals(HttpStatusCode.OK, tasksResponse.response.status())
-                val taskResponse = Json.decodeFromString<Task>(tasksResponse.response.content!!)
-                assertEquals(updatedTask, taskResponse)
+                val taskResponse = Json.decodeFromString<TaskRecord>(tasksResponse.response.content!!)
+                assertEquals(updatedTask, taskResponse.taskDetails)
             }
         }
     }
@@ -257,7 +257,7 @@ class IntegrationTest {
     fun `test create task with unauthorized manager logged-in user` (){
         with(client) {
             sessionCookie = this?.login("manager1", "manager1")!!
-            val newTask = Task("title", "description", TaskStatus.NOT_STARTED, TaskSeverity.HIGH, user3Id, dueDate)
+            val newTask = TaskDetails("title", "description", TaskStatus.NOT_STARTED, TaskSeverity.HIGH, user3Id, dueDate)
             handleRequest(HttpMethod.Put, "/tasks/${task3?.taskId}") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addHeader(HttpHeaders.Cookie, "SESSION=${sessionCookie?.value}")
@@ -284,25 +284,25 @@ class IntegrationTest {
     fun `test get task history` (){
         with(client) {
             sessionCookie = this?.login("manager2", "manager2")!!
-            val updatedTask1 = task4?.copy(owner = manager2Id, status = TaskStatus.IN_PROGRESS, severity = TaskSeverity.URGENT)
+            val updatedTask1 = task4?.taskDetails?.copy(owner = manager2Id, status = TaskStatus.IN_PROGRESS, severity = TaskSeverity.URGENT)
             handleRequest(HttpMethod.Put, "/tasks/${task4?.taskId}") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addHeader(HttpHeaders.Cookie, "SESSION=${sessionCookie?.value}")
                 setBody(Json.encodeToString(updatedTask1))
             }.let { tasksResponse ->
                 assertEquals(HttpStatusCode.OK, tasksResponse.response.status())
-                val taskResponse = Json.decodeFromString<Task>(tasksResponse.response.content!!)
-                assertEquals(updatedTask1, taskResponse)
+                val taskResponse = Json.decodeFromString<TaskRecord>(tasksResponse.response.content!!)
+                assertEquals(updatedTask1, taskResponse.taskDetails)
             }
-            val updatedTask2 = task4?.copy(status = TaskStatus.COMPLETED)
+            val updatedTask2 = task4?.taskDetails?.copy(status = TaskStatus.COMPLETED)
             handleRequest(HttpMethod.Put, "/tasks/${task4?.taskId}") {
                 addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 addHeader(HttpHeaders.Cookie, "SESSION=${sessionCookie?.value}")
                 setBody(Json.encodeToString(updatedTask2))
             }.let { tasksResponse ->
                 assertEquals(HttpStatusCode.OK, tasksResponse.response.status())
-                val taskResponse = Json.decodeFromString<Task>(tasksResponse.response.content!!)
-                assertEquals(updatedTask2, taskResponse)
+                val taskResponse = Json.decodeFromString<TaskRecord>(tasksResponse.response.content!!)
+                assertEquals(updatedTask2, taskResponse.taskDetails)
             }
             handleRequest(HttpMethod.Delete, "/tasks/${task4?.taskId}") {
                 addHeader(HttpHeaders.Cookie, "SESSION=${sessionCookie?.value}")
@@ -319,18 +319,18 @@ class IntegrationTest {
                 assertEquals(4, taskRevisions.size)
                 assertEquals(UpdateType.CREATE, taskRevisions[0].updateType)
                 assertEquals(adminId, taskRevisions[0].modifiedBy)
-                assertEquals(TaskStatus.NOT_STARTED, taskRevisions[0].task.status)
-                assertNull(taskRevisions[0].task.owner)
+                assertEquals(TaskStatus.NOT_STARTED, taskRevisions[0].task.taskDetails.status)
+                assertNull(taskRevisions[0].task.taskDetails.owner)
 
                 assertEquals(UpdateType.UPDATE, taskRevisions[1].updateType)
                 assertEquals(manager2Id, taskRevisions[1].modifiedBy)
-                assertEquals(TaskStatus.IN_PROGRESS, taskRevisions[1].task.status)
-                assertEquals(TaskSeverity.URGENT, taskRevisions[1].task.severity)
-                assertEquals(manager2Id, taskRevisions[1].task.owner)
+                assertEquals(TaskStatus.IN_PROGRESS, taskRevisions[1].task.taskDetails.status)
+                assertEquals(TaskSeverity.URGENT, taskRevisions[1].task.taskDetails.severity)
+                assertEquals(manager2Id, taskRevisions[1].task.taskDetails.owner)
 
                 assertEquals(UpdateType.UPDATE, taskRevisions[2].updateType)
                 assertEquals(manager2Id, taskRevisions[2].modifiedBy)
-                assertEquals(TaskStatus.COMPLETED, taskRevisions[2].task.status)
+                assertEquals(TaskStatus.COMPLETED, taskRevisions[2].task.taskDetails.status)
 
                 assertEquals(UpdateType.DELETE, taskRevisions[3].updateType)
                 assertEquals(manager2Id, taskRevisions[3].modifiedBy)
@@ -370,7 +370,7 @@ private fun TestApplicationEngine.createAndVerifyUser(sessionCookie: Cookie?, us
     return userResponse.userId!!
 }
 
-private fun TestApplicationEngine.createAndVerifyTask(sessionCookie: Cookie?, task: Task): Task {
+private fun TestApplicationEngine.createAndVerifyTask(sessionCookie: Cookie?, task: TaskDetails): TaskRecord {
     val response = handleRequest(HttpMethod.Post, "/tasks") {
         addHeader(HttpHeaders.ContentType, ContentType.Application.Json.toString())
         addHeader(HttpHeaders.Cookie, "SESSION=${sessionCookie?.value}")
@@ -378,12 +378,12 @@ private fun TestApplicationEngine.createAndVerifyTask(sessionCookie: Cookie?, ta
     }
 
     assertEquals(HttpStatusCode.Created, response.response.status())
-    val taskResponse = Json.decodeFromString<Task>(response.response.content!!)
-    assertEquals(task.title, taskResponse.title)
-    assertEquals(task.description, taskResponse.description)
-    assertEquals(task.dueDate, taskResponse.dueDate)
-    assertEquals(task.status, taskResponse.status)
-    assertEquals(task.severity, taskResponse.severity)
-    assertEquals(task.owner, taskResponse.owner)
+    val taskResponse = Json.decodeFromString<TaskRecord>(response.response.content!!)
+    assertEquals(task.title, taskResponse.taskDetails.title)
+    assertEquals(task.description, taskResponse.taskDetails.description)
+    assertEquals(task.dueDate, taskResponse.taskDetails.dueDate)
+    assertEquals(task.status, taskResponse.taskDetails.status)
+    assertEquals(task.severity, taskResponse.taskDetails.severity)
+    assertEquals(task.owner, taskResponse.taskDetails.owner)
     return taskResponse
 }

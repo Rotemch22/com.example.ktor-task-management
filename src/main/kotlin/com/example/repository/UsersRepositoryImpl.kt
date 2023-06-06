@@ -1,6 +1,7 @@
 package com.example.repository
 
 import com.example.models.*
+import com.example.repository.interfaces.UsersRepository
 import mu.KotlinLogging
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable

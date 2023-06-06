@@ -1,9 +1,9 @@
 package com.example.routes
 
-import UsersService
 import com.example.exceptions.Exceptions
 import com.example.models.Role
 import com.example.models.User
+import com.example.services.interfaces.UsersService
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*

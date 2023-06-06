@@ -1,7 +1,8 @@
-package com.example.repository
+package com.example.repository.interfaces
 
 import com.example.RequestContext
-import com.example.models.Task
+import com.example.models.TaskDetails
+import com.example.models.TaskRecord
 import com.example.models.TaskRevision
 import com.example.models.TasksQueryRequest
 
@@ -12,30 +13,31 @@ interface TasksRepository {
     /**
      * Inserts a new task into the database.
      * @param requestContext The request context.
-     * @param task The task to be inserted.
+     * @param taskDetails The task to be inserted.
      * @return The ID of the inserted task.
      */
-    fun insertTask(requestContext: RequestContext, task: Task): Int
+    fun insertTask(requestContext: RequestContext, taskDetails: TaskDetails): Int
 
     /**
      * Updates an existing task in the database.
      * @param requestContext The request context.
-     * @param task The updated task.
+     * @param id: the id of the task.
+     * @param taskDetails The updated task.
      */
-    fun updateTask(requestContext: RequestContext, task: Task)
+    fun updateTask(requestContext: RequestContext, id: Int, taskDetails: TaskDetails)
 
     /**
      * Retrieves all tasks from the database.
      * @return A list of tasks.
      */
-    fun getAllTasks(): List<Task>
+    fun getAllTasks(): List<TaskRecord>
 
     /**
      * Retrieves tasks from the database based on the specified query parameters.
      * @param request The query request.
      * @return A list of tasks matching the query parameters.
      */
-    fun getTasks(request: TasksQueryRequest): List<Task>
+    fun getTasks(request: TasksQueryRequest): List<TaskRecord>
 
     /**
      * Retrieves the task history for a specific task.
@@ -49,7 +51,7 @@ interface TasksRepository {
      * @param id The ID of the task.
      * @return The task with the specified ID, or null if not found.
      */
-    fun getTaskById(id: Int): Task?
+    fun getTaskById(id: Int): TaskRecord?
 
     /**
      * Deletes a task from the database.

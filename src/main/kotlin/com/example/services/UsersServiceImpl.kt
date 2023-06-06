@@ -1,16 +1,16 @@
 package com.example.services
 
-import UsersService
 import com.example.exceptions.Exceptions
 import com.example.models.Role
 import com.example.models.User
-import com.example.repository.UsersRepository
+import com.example.repository.interfaces.UsersRepository
 import com.example.routes.toUserResponse
+import com.example.services.interfaces.UsersService
 import mu.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
 
-class UsersServiceImpl(private val usersRepository: UsersRepository) : UsersService{
+class UsersServiceImpl(private val usersRepository: UsersRepository) : UsersService {
 
     override fun insertUser(user : User) : Int{
         if (user.role == Role.END_USER && (user.manager == null || user.manager.role != Role.MANAGER)){

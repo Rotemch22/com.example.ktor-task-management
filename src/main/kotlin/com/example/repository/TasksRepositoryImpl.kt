@@ -3,6 +3,7 @@ package com.example.repository
 import com.example.RequestContext
 import com.example.exceptions.Exceptions
 import com.example.models.*
+import com.example.repository.interfaces.TasksRepository
 import kotlinx.datetime.toJavaLocalDateTime
 import kotlinx.datetime.toKotlinLocalDateTime
 import mu.KotlinLogging
@@ -15,50 +16,50 @@ import java.time.LocalDateTime
 
 private val logger = KotlinLogging.logger {}
 
-class TasksRepositoryImpl (private val db: Database) : TasksRepository{
+class TasksRepositoryImpl(private val db: Database) : TasksRepository {
 
-    override fun insertTask(requestContext: RequestContext, task: Task): Int {
+    override fun insertTask(requestContext: RequestContext, taskDetails: TaskDetails): Int {
         val id = transaction(db) {
             TasksTable.insertAndGetId {
-                it[title] = task.title
-                it[description] = task.description
-                it[status] = task.status
-                it[severity] = task.severity
-                it[owner] = task.owner
-                it[dueDate] = task.dueDate.toJavaLocalDateTime()
+                it[title] = taskDetails.title
+                it[description] = taskDetails.description
+                it[status] = taskDetails.status
+                it[severity] = taskDetails.severity
+                it[owner] = taskDetails.owner
+                it[dueDate] = taskDetails.dueDate.toJavaLocalDateTime()
             }
         }
 
-        logger.info { "task $task successfully created in db with id ${id.value}" }
+        logger.info { "task $taskDetails successfully created in db with id ${id.value}" }
 
-        addTaskRevision(requestContext.user.userId, task.copy(taskId = id.value), UpdateType.CREATE)
+        addTaskRevision(requestContext.user.userId, TaskRecord(taskDetails, id.value), UpdateType.CREATE)
         return id.value
     }
 
-    override fun updateTask(requestContext: RequestContext, task: Task) {
+    override fun updateTask(requestContext: RequestContext, id: Int, taskDetails: TaskDetails) {
         transaction(db) {
-            val rowsUpdated = TasksTable.update({ TasksTable.id eq task.taskId })
+            val rowsUpdated = TasksTable.update({ TasksTable.id eq id })
             {
-                it[title] = task.title
-                it[description] = task.description
-                it[status] = task.status
-                it[severity] = task.severity
-                it[owner] = task.owner
-                it[dueDate] = task.dueDate.toJavaLocalDateTime()
+                it[title] = taskDetails.title
+                it[description] = taskDetails.description
+                it[status] = taskDetails.status
+                it[severity] = taskDetails.severity
+                it[owner] = taskDetails.owner
+                it[dueDate] = taskDetails.dueDate.toJavaLocalDateTime()
             }
 
             // if no rows were updated then the task with given id does not exist
             if (rowsUpdated == 0) {
-                logger.error { "No task with id ${task.taskId} exists in the db" }
-                throw Exceptions.TaskNotFoundException(task.taskId)
+                logger.error { "No task with id $id exists in the db" }
+                throw Exceptions.TaskNotFoundException(id)
             }
 
-            logger.info { "task $task successfully updated in db" }
-            addTaskRevision(requestContext.user.userId, task, UpdateType.UPDATE)
+            logger.info { "task $taskDetails with id $id successfully updated in db" }
+            addTaskRevision(requestContext.user.userId, TaskRecord(taskDetails, id), UpdateType.UPDATE)
         }
     }
 
-    override fun getAllTasks(): List<Task> {
+    override fun getAllTasks(): List<TaskRecord> {
         return transaction(db) {
             TasksTable.selectAll().map {
                 TasksTable.toTask(it)
@@ -66,7 +67,7 @@ class TasksRepositoryImpl (private val db: Database) : TasksRepository{
         }
     }
 
-    override fun getTasks(request: TasksQueryRequest): List<Task> {
+    override fun getTasks(request: TasksQueryRequest): List<TaskRecord> {
         return transaction(db) {
             // create query using the request if they are not null
             val tasksQuery = TasksTable.select {
@@ -89,14 +90,14 @@ class TasksRepositoryImpl (private val db: Database) : TasksRepository{
     }
 
 
-    override fun getTaskHistory(taskId: Int) : List<TaskRevision>{
+    override fun getTaskHistory(taskId: Int): List<TaskRevision> {
         return transaction(db) {
             TasksRevisionsTable.select(TasksRevisionsTable.taskId eq taskId)
                 .orderBy(TasksRevisionsTable.revision).map { TasksRevisionsTable.toTaskRevision(it) }
         }
     }
 
-    override fun getTaskById(id: Int): Task? {
+    override fun getTaskById(id: Int): TaskRecord? {
         return transaction(db) {
             TasksTable.select(TasksTable.id eq id).map {
                 TasksTable.toTask(it)
@@ -123,7 +124,7 @@ class TasksRepositoryImpl (private val db: Database) : TasksRepository{
     }
 
 
-    private fun addTaskRevision(loggedInUserId : Int, task: Task, updateType: UpdateType) {
+    private fun addTaskRevision(loggedInUserId: Int, task: TaskRecord, updateType: UpdateType) {
         transaction(db) {
             val currentMaxRevision = TasksRevisionsTable
                 .slice(TasksRevisionsTable.revision)
@@ -133,12 +134,12 @@ class TasksRepositoryImpl (private val db: Database) : TasksRepository{
             TasksRevisionsTable.insert {
                 it[taskId] = task.taskId
                 it[revision] = currentMaxRevision + 1
-                it[title] = task.title
-                it[description] = task.description
-                it[status] = task.status
-                it[severity] = task.severity
-                it[owner] = task.owner
-                it[dueDate] = task.dueDate.toJavaLocalDateTime()
+                it[title] = task.taskDetails.title
+                it[description] = task.taskDetails.description
+                it[status] = task.taskDetails.status
+                it[severity] = task.taskDetails.severity
+                it[owner] = task.taskDetails.owner
+                it[dueDate] = task.taskDetails.dueDate.toJavaLocalDateTime()
                 it[modifiedBy] = loggedInUserId
                 it[modifiedDate] = LocalDateTime.now()
                 it[this.updateType] = updateType
@@ -170,12 +171,13 @@ class TasksRepositoryImpl (private val db: Database) : TasksRepository{
         val modifiedBy = reference("modified_by", UsersRepositoryImpl.UsersTable)
         val modifiedDate = datetime("modified_date")
         val updateType = enumeration("update_type", UpdateType::class)
+
         init {
             uniqueIndex(taskId, revision)
         }
     }
 
-    private fun TasksTable.toTask(it: ResultRow): Task {
+    private fun TasksTable.toTask(it: ResultRow): TaskRecord {
         val title = it[title]
         val description = it[description]
         val status = it[status]
@@ -183,7 +185,7 @@ class TasksRepositoryImpl (private val db: Database) : TasksRepository{
         val owner = it[owner]?.value
         val dueDate = it[dueDate].toKotlinLocalDateTime()
         val taskId = it[id].value
-        return Task(title, description, status, severity, owner, dueDate, taskId)
+        return TaskRecord(TaskDetails(title, description, status, severity, owner, dueDate), taskId)
     }
 
 
@@ -199,8 +201,8 @@ class TasksRepositoryImpl (private val db: Database) : TasksRepository{
         val modifiedBy = it[modifiedBy].value
         val modifiedDate = it[modifiedDate].toKotlinLocalDateTime()
         val updateType = it[updateType]
-        return TaskRevision(
-            Task(title, description, status, severity, owner, dueDate, taskId),
-            revision, modifiedBy, modifiedDate, updateType)
+        val taskDetails = TaskDetails(title, description, status, severity, owner, dueDate)
+        val taskRecord = TaskRecord(taskDetails, taskId)
+        return TaskRevision(taskRecord, revision, modifiedBy, modifiedDate, updateType)
     }
 }

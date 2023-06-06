@@ -1,3 +1,5 @@
+package com.example.services.interfaces
+
 import com.example.models.User
 import com.example.exceptions.Exceptions
 

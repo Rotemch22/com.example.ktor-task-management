@@ -3,7 +3,7 @@ package com.example
 import com.example.exceptions.Exceptions
 import com.example.models.Role
 import com.example.models.User
-import com.example.repository.UsersRepository
+import com.example.repository.interfaces.UsersRepository
 import com.example.services.UsersServiceImpl
 import io.mockk.every
 import io.mockk.mockk

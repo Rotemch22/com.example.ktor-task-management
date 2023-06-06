@@ -16,19 +16,24 @@ enum class TaskSeverity {
 }
 
 @Serializable
-data class Task(
+data class TaskRecord(
+    val taskDetails: TaskDetails,
+    val taskId: Int
+)
+
+@Serializable
+data class TaskDetails(
     val title: String,
     val description: String? = null,
     val status: TaskStatus,
     val severity: TaskSeverity,
     val owner: Int? = null,
-    val dueDate: LocalDateTime,
-    val taskId: Int = 0
+    val dueDate: LocalDateTime
 )
 
 @Serializable
 data class TaskRevision(
-    val task : Task,
+    val task : TaskRecord,
     val revision : Int,
     val modifiedBy : Int,
     val modifiedDate: LocalDateTime,

@@ -1,18 +1,18 @@
 package com.example
 
-import TasksService
-import UsersService
 import com.example.exceptions.ErrorResponse
 import com.example.exceptions.Exceptions
 import com.example.models.User
-import com.example.repository.TasksRepository
 import com.example.repository.TasksRepositoryImpl
-import com.example.repository.UsersRepository
 import com.example.repository.UsersRepositoryImpl
+import com.example.repository.interfaces.TasksRepository
+import com.example.repository.interfaces.UsersRepository
 import com.example.routes.taskRoutes
 import com.example.routes.userRoutes
 import com.example.services.TasksServiceImpl
 import com.example.services.UsersServiceImpl
+import com.example.services.interfaces.TasksService
+import com.example.services.interfaces.UsersService
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*

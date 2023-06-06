@@ -1,6 +1,6 @@
 package com.example.exceptions
 
-import com.example.models.Task
+import com.example.models.TaskDetails
 import com.example.routes.UserInput
 import com.example.routes.UserResponse
 import io.ktor.http.*
@@ -10,17 +10,14 @@ class Exceptions {
 
     class TaskNotFoundException(id: Int) : Exception("Task with id $id not found")
     open class InvalidTaskException(message: String) : Exception(message)
-    class TaskDueDatePastException(task: Task) :
+    class TaskDueDatePastException(task: TaskDetails) :
         InvalidTaskException("Task $task can't be created/updated with due date ${task.dueDate} in the past")
 
-    class MismatchedTaskIdException(urlId: Int, bodyId: Int) :
-        InvalidTaskException("The task ID in the URL $urlId does not match the taskId in the request body $bodyId")
-
-    class MissingTaskTitleException(task: Task) : InvalidTaskException("Invalid task $task with an empty title")
-    class TaskFieldExceededMaxLength(task: Task, field: String, length: Int) :
+    class MissingTaskTitleException(task: TaskDetails) : InvalidTaskException("Invalid task $task with an empty title")
+    class TaskFieldExceededMaxLength(task: TaskDetails, field: String, length: Int) :
         InvalidTaskException("Invalid task $task, field $field exceeded max length $length")
 
-    class TaskOwnerDoesntExist(task: Task) :
+    class TaskOwnerDoesntExist(task: TaskDetails) :
         InvalidTaskException("Task $task with none existing owner id ${task.owner}")
 
     class InvalidTaskQueryValueException(value: String, field: String) :
@@ -34,13 +31,12 @@ class Exceptions {
     class NoUserFoundForLoggedInUserException(username: String) :
         Exception("No user found for logged in username $username")
 
-    class TaskNotAuthorizedForUser(task: Task, username: String) :
+    class TaskNotAuthorizedForUser(task: TaskDetails, username: String) :
         Exception("Task $task is not authorized for user $username")
 
     companion object ExceptionStatusMap {
         val statusMap: Map<KClass<out Exception>, HttpStatusCode> = mapOf(
             TaskNotFoundException::class to HttpStatusCode.NotFound,
-            MismatchedTaskIdException::class to HttpStatusCode.UnprocessableEntity,
             TaskDueDatePastException::class to HttpStatusCode.BadRequest,
             InvalidTaskQueryValueException::class to HttpStatusCode.BadRequest,
             EndUserWithoutManager::class to HttpStatusCode.BadRequest,

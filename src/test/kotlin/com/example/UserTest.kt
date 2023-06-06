@@ -1,3 +1,5 @@
+package com.example
+
 import com.example.models.Role
 import com.example.models.User
 import org.junit.Test

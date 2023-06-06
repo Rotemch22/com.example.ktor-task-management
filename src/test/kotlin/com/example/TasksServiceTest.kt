@@ -1,10 +1,10 @@
 package com.example
 
-import UsersService
 import com.example.exceptions.Exceptions
 import com.example.models.*
-import com.example.repository.TasksRepository
+import com.example.repository.interfaces.TasksRepository
 import com.example.services.TasksServiceImpl
+import com.example.services.interfaces.UsersService
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.datetime.toKotlinLocalDateTime
@@ -20,13 +20,15 @@ class TasksServiceTest {
     private val usersService = mockk<UsersService>()
     private val taskService = TasksServiceImpl(tasksRepository, usersService)
 
-    private val task = Task(
-        "title",
-        "description",
-        TaskStatus.NOT_STARTED,
-        TaskSeverity.LOW,
-        null,
-        java.time.LocalDateTime.now().plusDays(1).toKotlinLocalDateTime(),
+    private val task = TaskRecord(
+        TaskDetails(
+            "title",
+            "description",
+            TaskStatus.NOT_STARTED,
+            TaskSeverity.LOW,
+            null,
+            java.time.LocalDateTime.now().plusDays(1).toKotlinLocalDateTime(),
+            ),
         1
     )
 
@@ -36,7 +38,7 @@ class TasksServiceTest {
         assertFailsWith(Exceptions.TaskDueDatePastException::class) {
             taskService.insertTask(
                 RequestContext(user),
-                task.copy(dueDate = java.time.LocalDateTime.now().minusDays(1).toKotlinLocalDateTime())
+                task.taskDetails.copy(dueDate = java.time.LocalDateTime.now().minusDays(1).toKotlinLocalDateTime())
             )
         }
     }
@@ -50,33 +52,7 @@ class TasksServiceTest {
             taskService.updateTask(
                 RequestContext(user),
                 1,
-                task.copy(dueDate = java.time.LocalDateTime.now().minusDays(1).toKotlinLocalDateTime())
-            )
-        }
-    }
-
-    @Test
-    fun `test update task with mis matching ids`() {
-        every { usersService.getUserByUserName("admin") } returns User("admin", "admin", "admin@email.com", Role.ADMIN, null)
-        every {tasksRepository.getTaskById(1)} returns task
-        assertFailsWith(Exceptions.MismatchedTaskIdException::class) {
-            taskService.updateTask(
-                RequestContext(user),
-                1,
-                task.copy(title = "newTitle", taskId =  2)
-            )
-        }
-    }
-
-    @Test
-    fun `test update none existing task`() {
-        every { usersService.getUserByUserName("admin") } returns User("admin", "admin", "admin@email.com", Role.ADMIN, null)
-        every {tasksRepository.getTaskById(1)} returns null
-        assertFailsWith(Exceptions.TaskNotFoundException::class) {
-            taskService.updateTask(
-                RequestContext(user),
-                1,
-                task.copy(title = "newTitle")
+                task.taskDetails.copy(dueDate = java.time.LocalDateTime.now().minusDays(1).toKotlinLocalDateTime())
             )
         }
     }
@@ -98,7 +74,7 @@ class TasksServiceTest {
         assertFailsWith(Exceptions.MissingTaskTitleException::class) {
             taskService.insertTask(
                 RequestContext(user),
-                task.copy(title = "")
+                task.taskDetails.copy(title = "")
             )
         }
 
@@ -107,7 +83,7 @@ class TasksServiceTest {
             taskService.updateTask(
                 RequestContext(user),
                 1,
-                task.copy(title = "")
+                task.taskDetails.copy(title = "")
             )
         }
     }
@@ -119,7 +95,7 @@ class TasksServiceTest {
         assertFailsWith(Exceptions.TaskFieldExceededMaxLength::class) {
             taskService.insertTask(
                 RequestContext(user),
-                task.copy(title = generateRandomString(101))
+                task.taskDetails.copy(title = generateRandomString(101))
             )
         }
 
@@ -128,7 +104,7 @@ class TasksServiceTest {
             taskService.updateTask(
                 RequestContext(user),
                 1,
-                task.copy(title = generateRandomString(101))
+                task.taskDetails.copy(title = generateRandomString(101))
             )
         }
     }
@@ -140,7 +116,7 @@ class TasksServiceTest {
         assertFailsWith(Exceptions.TaskFieldExceededMaxLength::class) {
             taskService.insertTask(
                 RequestContext(user),
-                task.copy(description = generateRandomString(1001))
+                task.taskDetails.copy(description = generateRandomString(1001))
             )
         }
 
@@ -149,7 +125,7 @@ class TasksServiceTest {
             taskService.updateTask(
                 RequestContext(user),
                 1,
-                task.copy(description = generateRandomString(1001))
+                task.taskDetails.copy(description = generateRandomString(1001))
             )
         }
     }
@@ -162,7 +138,7 @@ class TasksServiceTest {
         assertFailsWith(Exceptions.TaskOwnerDoesntExist::class) {
             taskService.insertTask(
                 RequestContext(user),
-                task.copy(owner = 7)
+                task.taskDetails.copy(owner = 7)
             )
         }
 
@@ -171,7 +147,7 @@ class TasksServiceTest {
             taskService.updateTask(
                 RequestContext(user),
                 1,
-                task.copy(owner = 7)
+                task.taskDetails.copy(owner = 7)
             )
         }
     }

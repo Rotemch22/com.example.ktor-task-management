@@ -1,11 +1,11 @@
 package com.example.routes
 
-import TasksService
-import UsersService
 import com.example.RequestContext
 import com.example.exceptions.Exceptions
 import com.example.getLoggedInUsername
 import com.example.models.*
+import com.example.services.interfaces.TasksService
+import com.example.services.interfaces.UsersService
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -58,22 +58,22 @@ fun Route.taskRoutes(tasksService: TasksService, usersService: UsersService) {
     }
 
     post(TASKS_ROUTE) {
-        val task = call.receive<Task>()
+        val taskDetails = call.receive<TaskDetails>()
         val requestContext = getRequestContext(call.getLoggedInUsername())
 
-        val id = tasksService.insertTask(requestContext, task)
-        logger.info { "Task $task with id $id created successfully" }
-        call.respond(status = HttpStatusCode.Created, task.copy(taskId = id))
+        val id = tasksService.insertTask(requestContext, taskDetails)
+        logger.info { "Task $taskDetails with id $id created successfully" }
+        call.respond(status = HttpStatusCode.Created, TaskRecord(taskDetails, id))
     }
 
     put(TASK_ID_ROUTE) {
         val id = call.parameters.getOrFail<Int>("id")
-        val task = call.receive<Task>()
+        val task = call.receive<TaskDetails>()
         val requestContext = getRequestContext(call.getLoggedInUsername())
 
         tasksService.updateTask(requestContext, id, task)
         logger.info { "Task $task updated successfully" }
-        call.respond(status = HttpStatusCode.OK, task)
+        call.respond(status = HttpStatusCode.OK, TaskRecord(task, id))
     }
 
     delete(TASK_ID_ROUTE) {
