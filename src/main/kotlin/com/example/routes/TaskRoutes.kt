@@ -14,6 +14,10 @@ import io.ktor.server.routing.*
 import io.ktor.server.util.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import mu.KotlinLogging
+
+private val logger = KotlinLogging.logger {}
+
 
 const val TASKS_ROUTE = "/tasks"
 const val TASK_ID_ROUTE = "$TASKS_ROUTE/{id}"
@@ -32,7 +36,7 @@ fun Route.taskRoutes(tasksService: TasksService, usersService: UsersService) {
         val owner = call.request.queryParameters["owner"]
         val requestContext = getRequestContext(call.getLoggedInUsername())
 
-        // parse the query params given into the corresponding enum classes and use throw an exception if not possible
+        // parse the query params given into the corresponding enum classes and throw an exception if not possible
         val status = statusParam?.let { parseEnumValue<TaskStatus>(it, "status") }
         val severity = severityParam?.let { parseEnumValue<TaskSeverity>(it, "severity") }
         val order = orderParam?.let { parseEnumValue<TaskSortOrder>(it, "order") }
@@ -58,6 +62,7 @@ fun Route.taskRoutes(tasksService: TasksService, usersService: UsersService) {
         val requestContext = getRequestContext(call.getLoggedInUsername())
 
         val id = tasksService.insertTask(requestContext, task)
+        logger.info { "Task $task with id $id created successfully" }
         call.respond(status = HttpStatusCode.Created, task.copy(taskId = id))
     }
 
@@ -67,6 +72,7 @@ fun Route.taskRoutes(tasksService: TasksService, usersService: UsersService) {
         val requestContext = getRequestContext(call.getLoggedInUsername())
 
         tasksService.updateTask(requestContext, id, task)
+        logger.info { "Task $task updated successfully" }
         call.respond(status = HttpStatusCode.OK, task)
     }
 
@@ -75,6 +81,7 @@ fun Route.taskRoutes(tasksService: TasksService, usersService: UsersService) {
         val requestContext = getRequestContext(call.getLoggedInUsername())
 
         tasksService.deleteTask(requestContext, id)
+        logger.info { "Task with id$id deleted successfully" }
         call.respondText("Task with id $id deleted successfully", status = HttpStatusCode.OK)
     }
 }

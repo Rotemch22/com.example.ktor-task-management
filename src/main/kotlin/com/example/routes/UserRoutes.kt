@@ -35,6 +35,7 @@ fun Route.userRoutes(usersService: UsersService) {
 
         val userData = userInput.toUserData(manager)
         val id = usersService.insertUser(userData)
+        logger.info { "user $userData with user id $id created successfully" }
         call.respond(status = HttpStatusCode.Created, userData.copy(userId = id).toUserResponse())
     }
 }

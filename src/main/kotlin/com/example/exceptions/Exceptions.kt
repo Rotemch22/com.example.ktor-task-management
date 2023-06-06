@@ -38,7 +38,7 @@ class Exceptions {
         Exception("Task $task is not authorized for user $username")
 
     companion object ExceptionStatusMap {
-        val statusMaap: Map<KClass<out Exception>, HttpStatusCode> = mapOf(
+        val statusMap: Map<KClass<out Exception>, HttpStatusCode> = mapOf(
             TaskNotFoundException::class to HttpStatusCode.NotFound,
             MismatchedTaskIdException::class to HttpStatusCode.UnprocessableEntity,
             TaskDueDatePastException::class to HttpStatusCode.BadRequest,

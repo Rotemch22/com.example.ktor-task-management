@@ -43,10 +43,14 @@ fun main() {
     // Create the database tables
     createDatabaseTables(db)
 
+
+    // Setup Koin dependencies
     startKoin {
         modules(koinAppModule(db))
     }
 
+
+    // Create services and add admin user if it doesn't exist
     val usersService: UsersService = getKoin().get()
     val tasksService: TasksService = getKoin().get()
 
@@ -94,14 +98,17 @@ fun startServer(tasksService: TasksService, usersService: UsersService) {
 }
 
 fun Application.module(tasksService: TasksService, usersService: UsersService) {
+    // Install json content negotiation
     install(ContentNegotiation) {
         json()
     }
 
+
+    // Convert exceptions thrown from the server side code to the corresponding status code with the error message
     install(StatusPages) {
         exception<Throwable> { call, cause ->
             call.respond(
-                Exceptions.statusMaap[cause::class]
+                Exceptions.statusMap[cause::class]
                     ?: HttpStatusCode.InternalServerError,
                 ErrorResponse(cause.message ?: "")
             )

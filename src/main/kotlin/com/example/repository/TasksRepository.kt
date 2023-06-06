@@ -106,6 +106,7 @@ class TasksRepository (private val db: Database) {
 
     fun deleteTask(requestContext: RequestContext, id: Int) {
         transaction(db) {
+            // query the task to be deleted from the db to insure it exist and to populate the task revisions table
             val task = TasksTable.select(TasksTable.id eq id).map {
                 TasksTable.toTask(it)
             }.singleOrNull()
@@ -122,7 +123,7 @@ class TasksRepository (private val db: Database) {
     }
 
 
-    private fun addTaskRevision(loggedInUserId : Int, task: Task, update: UpdateType) {
+    private fun addTaskRevision(loggedInUserId : Int, task: Task, updateType: UpdateType) {
         transaction(db) {
             val currentMaxRevision = TasksRevisionsTable
                 .slice(TasksRevisionsTable.revision)
@@ -140,10 +141,10 @@ class TasksRepository (private val db: Database) {
                 it[dueDate] = task.dueDate.toJavaLocalDateTime()
                 it[modifiedBy] = loggedInUserId
                 it[modifiedDate] = LocalDateTime.now()
-                it[updateType] = update
+                it[this.updateType] = updateType
             }
 
-            logger.info { "task revision ${currentMaxRevision + 1} successfully inserted for task $task with update type $update" }
+            logger.info { "task revision ${currentMaxRevision + 1} successfully inserted for task $task with update type $updateType" }
         }
     }
 

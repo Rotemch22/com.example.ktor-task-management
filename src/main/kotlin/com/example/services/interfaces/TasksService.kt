@@ -46,7 +46,8 @@ interface TasksService {
      * @return The ID of the inserted task.
      * @throws Exceptions.TaskNotAuthorizedForUser if the task is not authorized for the user in the request context.
      * @throws Exceptions.TaskDueDatePastException if the task's due date is in the past.
-     * @throws IllegalArgumentException if the task title or description length exceeds the maximum limits.
+     * @throws Exceptions.MissingTaskTitleException if the task title is empty.
+     * @throws Exceptions.TaskFieldExceededMaxLength if the task title or description length exceeds the maximum limits.
      */
     fun insertTask(requestContext: RequestContext, task: Task): Int
 
@@ -60,7 +61,8 @@ interface TasksService {
      * @throws Exceptions.TaskNotAuthorizedForUser if the task is not authorized for the user in the request context.
      * @throws Exceptions.MismatchedTaskIdException if the ID in the URL does not match the task's ID.
      * @throws Exceptions.TaskDueDatePastException if the task's due date is in the past.
-     * @throws IllegalArgumentException if the task title or description length exceeds the maximum limits.
+     * @throws Exceptions.MissingTaskTitleException if the task title is empty.
+     * @throws Exceptions.TaskFieldExceededMaxLength if the task title or description length exceeds the maximum limits.
      */
     fun updateTask(requestContext: RequestContext, id: Int, task: Task)
 
