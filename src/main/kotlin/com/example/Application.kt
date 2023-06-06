@@ -52,7 +52,7 @@ fun main() {
     }
 
 
-    // Create services and add admin user if it doesn't exist
+    // get services via Koin and add admin user if it doesn't exist
     val usersService: UsersService = getKoin().get()
     val tasksService: TasksService = getKoin().get()
 
